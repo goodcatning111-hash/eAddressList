@@ -13,10 +13,12 @@ import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { AddressBookCard } from '@/components/address-book-card';
 import { UnifiedSwipeableWrapper } from '@/components/ui/swipeable-row';
-import { getMorrisColor, MorrisColors } from '@/constants/colors';
+import { getMorrisColorForTheme, MorrisColors } from '@/constants/colors';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as addressBookDao from '@/db/dao/address-book-dao';
 import * as contactDao from '@/db/dao/contact-dao';
 import { getBookColor } from '@/db/dao/address-book-dao';
@@ -25,6 +27,7 @@ import type { AddressBook } from '@/db/types';
 /** 页面 1：通讯簿门户 — 展示所有通讯簿卡片，支持编辑模式 */
 export default function PortalScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [books, setBooks] = useState<AddressBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -35,7 +38,6 @@ export default function PortalScreen() {
   const [renameColorIdx, setRenameColorIdx] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<AddressBook | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-
   const loadBooks = useCallback(async () => {
     try {
       const list = await addressBookDao.getAll();
@@ -131,47 +133,69 @@ export default function PortalScreen() {
     await loadBooks();
   };
 
+  // Dark mode theme colours
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    toggle: isDark ? '#333' : '#F0F0F3',
+    toggleActive: isDark ? '#443322' : '#FFE5CC',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textTertiary: isDark ? '#888' : '#A0A0A0',
+    textPrimary: isDark ? '#E0E0E0' : '#000000',
+    border: isDark ? '#333' : '#E0E0E0',
+    headerBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
+    editHintBorder: isDark ? '#444' : '#FFE0B2',
+    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBorder: isDark ? '#444' : '#D0D0D5',
+    overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
+  };
+
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.screen }]}>
         <ActivityIndicator size="large" color="#208AEF" />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.screen }]}>
       {/* 标题栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>我的通讯录</Text>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>我的通讯录</Text>
           {!editMode && (
             <Pressable
-              style={styles.searchBtn}
+              style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.6 }]}
               onPress={() => router.push('/search' as any)}
             >
-              <Text style={{ fontSize: 20 }}>🔍</Text>
+              <Icon name="search" size={20} />
             </Pressable>
           )}
         </View>
         <View style={styles.headerRight}>
           <Pressable
-            style={[styles.editToggle, editMode && styles.editToggleActive]}
+            style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle }, editMode && { backgroundColor: theme.toggleActive }, pressed && { opacity: 0.7 }]}
             onPress={() => setEditMode(!editMode)}
           >
-            <Text style={{ fontSize: 16 }}>
-              {editMode ? '🔓 完成' : '🔒 编辑'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name={editMode ? 'check' : 'edit'} size={18} />
+              <Text style={{ fontSize: 16, color: theme.textPrimary }}>
+                {editMode ? ' 完成' : ' 编辑'}
+              </Text>
+            </View>
           </Pressable>
           {!editMode && (
-            <Pressable onPress={() => router.push('/settings')}>
-              <Text style={styles.settingsIcon}>⚙</Text>
+            <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
+              <Icon name="settings" size={26} />
             </Pressable>
           )}
         </View>
       </View>
       {editMode && (
-        <View style={styles.editHint}>
+        <View style={[styles.editHint, { backgroundColor: theme.editHintBg, borderBottomColor: theme.editHintBorder }]}>
           <Text style={{ fontSize: 12, color: '#FF9500' }}>
             长按拖拽排序 · 右划编辑/删除
           </Text>
@@ -183,16 +207,20 @@ export default function PortalScreen() {
         <ScrollView
           style={styles.body}
           contentContainerStyle={styles.emptyContainer}
+          bounces={true}
+          alwaysBounceVertical={true}
         >
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📖</Text>
-            <Text style={styles.emptyText}>暂无通讯簿</Text>
-            <Text style={styles.emptyHint}>点击下方 + 按钮创建</Text>
+            <Icon name="menu-book" size={64} secondary />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>暂无通讯簿</Text>
+            <Text style={[styles.emptyHint, { color: theme.textTertiary }]}>点击下方 + 按钮创建</Text>
           </View>
         </ScrollView>
       ) : editMode ? (
         <View style={styles.body}>
           <DraggableFlatList
+            bounces={true}
+            alwaysBounceVertical={true}
             data={books}
             keyExtractor={(item) => String(item.id)}
             onDragEnd={async ({ data }) => {
@@ -201,12 +229,12 @@ export default function PortalScreen() {
             }}
             renderItem={({ item, drag, isActive }: RenderItemParams<AddressBook>) => {
                 const colorIdx = item.colorIndex >= 0 ? item.colorIndex : item.id;
-                const cardBg = getMorrisColor(colorIdx).bg;
+                const cardColor = getMorrisColorForTheme(colorIdx, isDark);
                 return (
                 <UnifiedSwipeableWrapper
                   enabled
                   style={[styles.cardWrapper, isActive && styles.dragging]}
-                  cardBackgroundColor={cardBg}
+                  cardBackgroundColor={cardColor.bg}
                   borderRadius={16}
                   onEdit={() => {
                     setRenameTarget(item);
@@ -219,7 +247,7 @@ export default function PortalScreen() {
                     book={item}
                     index={item.id}
                     onPress={() => {}}
-                    onLongPress={() => drag()}
+                    onLongPress={drag}
                   />
                 </UnifiedSwipeableWrapper>
                 );
@@ -227,7 +255,7 @@ export default function PortalScreen() {
           />
         </View>
       ) : (
-        <ScrollView style={styles.body}>
+        <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
           {books.map((book) => (
             <View key={book.id} style={styles.cardWrapper}>
               <AddressBookCard
@@ -242,17 +270,18 @@ export default function PortalScreen() {
 
       {/* 重命名弹窗（含颜色选择器） */}
       {renameTarget && (
-        <View style={styles.overlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>编辑通讯簿</Text>
+        <View style={[styles.overlay, { backgroundColor: theme.overlayBg }]}>
+          <View style={[styles.dialog, { backgroundColor: theme.dialogBg }]}>
+            <Text style={[styles.dialogTitle, { color: theme.textPrimary }]}>编辑通讯簿</Text>
             <TextInput
-              style={styles.dialogInput}
+              style={[styles.dialogInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
               value={renameText}
               onChangeText={setRenameText}
               placeholder="通讯簿名称"
+              placeholderTextColor={theme.textSecondary}
               autoFocus
             />
-            <Text style={{ fontSize: 13, color: '#808080', marginBottom: Spacing.two }}>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: Spacing.two }}>
               选择主题色：
             </Text>
             <View style={styles.colorRow}>
@@ -270,12 +299,12 @@ export default function PortalScreen() {
             </View>
             <View style={styles.dialogActions}>
               <Pressable
-                style={styles.dialogCancel}
+                style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
                 onPress={() => setRenameTarget(null)}
               >
-                <Text style={styles.dialogCancelText}>取消</Text>
+                <Text style={[styles.dialogCancelText, { color: theme.textSecondary }]}>取消</Text>
               </Pressable>
-              <Pressable style={styles.dialogConfirm} onPress={handleRename}>
+              <Pressable style={({ pressed }) => [styles.dialogConfirm, pressed && { opacity: 0.8 }]} onPress={handleRename}>
                 <Text style={styles.dialogConfirmText}>确定</Text>
               </Pressable>
             </View>
@@ -285,32 +314,36 @@ export default function PortalScreen() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <View style={styles.overlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>⚠ 删除通讯簿</Text>
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: Spacing.three, textAlign: 'center' }}>
+        <View style={[styles.overlay, { backgroundColor: theme.overlayBg }]}>
+          <View style={[styles.dialog, { backgroundColor: theme.dialogBg }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Icon name="warning" size={18} color="#FF9500" />
+              <Text style={[styles.dialogTitle, { color: theme.textPrimary }]}> 删除通讯簿</Text>
+            </View>
+            <Text style={{ fontSize: 14, color: theme.textSecondary, marginBottom: Spacing.three, textAlign: 'center' }}>
               将删除「{deleteTarget.name}」及其 {deleteTarget.contactCount} 个联系人{'\n'}
               此操作不可撤销
             </Text>
-            <Text style={{ fontSize: 13, color: '#808080', marginBottom: Spacing.one }}>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: Spacing.one }}>
               请输入通讯簿名称以确认：
             </Text>
             <TextInput
-              style={styles.dialogInput}
+              style={[styles.dialogInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
               value={deleteConfirmText}
               onChangeText={setDeleteConfirmText}
               placeholder={deleteTarget.name}
+              placeholderTextColor={theme.textSecondary}
               autoFocus
             />
             <View style={styles.dialogActions}>
               <Pressable
-                style={styles.dialogCancel}
+                style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
                 onPress={() => setDeleteTarget(null)}
               >
-                <Text style={styles.dialogCancelText}>取消</Text>
+                <Text style={[styles.dialogCancelText, { color: theme.textSecondary }]}>取消</Text>
               </Pressable>
               <Pressable
-                style={[styles.dialogConfirm, { backgroundColor: '#FF3B30' }]}
+                style={({ pressed }) => [styles.dialogConfirm, { backgroundColor: '#FF3B30' }, pressed && { opacity: 0.8 }]}
                 onPress={confirmDelete}
               >
                 <Text style={styles.dialogConfirmText}>确认删除</Text>
@@ -322,27 +355,28 @@ export default function PortalScreen() {
 
       {/* 新建弹窗 */}
       {showCreate && (
-        <View style={styles.overlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>新建通讯簿</Text>
+        <View style={[styles.overlay, { backgroundColor: theme.overlayBg }]}>
+          <View style={[styles.dialog, { backgroundColor: theme.dialogBg }]}>
+            <Text style={[styles.dialogTitle, { color: theme.textPrimary }]}>新建通讯簿</Text>
             <TextInput
-              style={styles.dialogInput}
+              style={[styles.dialogInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
               value={newName}
               onChangeText={setNewName}
               placeholder="请输入通讯簿名称"
+              placeholderTextColor={theme.textSecondary}
               autoFocus
             />
             <View style={styles.dialogActions}>
               <Pressable
-                style={styles.dialogCancel}
+                style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
                 onPress={() => {
                   setShowCreate(false);
                   setNewName('');
                 }}
               >
-                <Text style={styles.dialogCancelText}>取消</Text>
+                <Text style={[styles.dialogCancelText, { color: theme.textSecondary }]}>取消</Text>
               </Pressable>
-              <Pressable style={styles.dialogConfirm} onPress={handleCreate}>
+              <Pressable style={({ pressed }) => [styles.dialogConfirm, pressed && { opacity: 0.8 }]} onPress={handleCreate}>
                 <Text style={styles.dialogConfirmText}>创建</Text>
               </Pressable>
             </View>
@@ -353,17 +387,17 @@ export default function PortalScreen() {
       {/* 收藏入口 */}
       {!editMode && (
         <Pressable
-          style={styles.favFloat}
+          style={({ pressed }) => [styles.favFloat, { backgroundColor: theme.card }, pressed && { opacity: 0.7 }]}
           onPress={() => router.push('/favorites' as any)}
         >
-          <Text style={styles.favFloatIcon}>⭐</Text>
+          <Icon name="star" size={26} color="#FFD700" />
         </Pressable>
       )}
 
       {/* FAB */}
       {!editMode && (
-        <Pressable style={styles.fab} onPress={() => setShowCreate(true)}>
-          <Text style={styles.fabText}>+</Text>
+        <Pressable style={({ pressed }) => [styles.fab, pressed && { opacity: 0.7 }]} onPress={() => setShowCreate(true)}>
+          <Icon name="add" size={28} color="#FFFFFF" />
         </Pressable>
       )}
     </View>
@@ -380,9 +414,7 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: Spacing.four,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
@@ -391,15 +423,11 @@ const styles = StyleSheet.create({
   editToggle: {
     padding: Spacing.one + Spacing.half,
     borderRadius: 8,
-    backgroundColor: '#F0F0F3',
   },
-  editToggleActive: { backgroundColor: '#FFE5CC' },
   editHint: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#FFF8E1',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#FFE0B2',
     alignItems: 'center',
   },
   settingsIcon: { fontSize: 26 },
@@ -407,8 +435,8 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyState: { alignItems: 'center' },
   emptyIcon: { fontSize: 64, marginBottom: Spacing.four },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#808080' },
-  emptyHint: { fontSize: 14, color: '#A0A0A0', marginTop: Spacing.one },
+  emptyText: { fontSize: 18, fontWeight: '600' },
+  emptyHint: { fontSize: 14, marginTop: Spacing.one },
   cardWrapper: { marginBottom: Spacing.four },
   editActions: {
     flexDirection: 'row',
@@ -421,13 +449,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
-  deleteBtn: { borderColor: '#FFD0D0' },
   dragging: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -443,7 +468,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -478,13 +502,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   dialog: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: Spacing.four,
     width: '80%',
@@ -498,7 +520,6 @@ const styles = StyleSheet.create({
   },
   dialogInput: {
     borderWidth: 1,
-    borderColor: '#D0D0D5',
     borderRadius: 10,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + Spacing.one,
@@ -514,7 +535,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
   },
-  dialogCancelText: { fontSize: 16, color: '#808080' },
+  dialogCancelText: { fontSize: 16 },
   dialogConfirm: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,

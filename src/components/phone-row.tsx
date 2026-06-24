@@ -7,7 +7,9 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { Icon } from '@/components/icon';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 
 interface Props {
   label: string;
@@ -16,6 +18,7 @@ interface Props {
 
 /** 电话号码行 — 标签 + 号码 + 拨号按钮 + 复制按钮 */
 export function PhoneRow({ label, phone }: Props) {
+  const { isDark } = useTheme();
   const handleCall = async () => {
     const url = `tel:${phone.replace(/\s/g, '')}`;
     try {
@@ -31,15 +34,15 @@ export function PhoneRow({ label, phone }: Props) {
   };
 
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.phone}>{phone}</Text>
+    <View style={[styles.row, { borderBottomColor: isDark ? '#333' : '#E0E0E0' }]}>
+      <Text style={[styles.label, { color: isDark ? '#AAA' : '#808080' }]}>{label}</Text>
+      <Text style={[styles.phone, { color: isDark ? '#E0E0E0' : '#111' }]}>{phone}</Text>
       <View style={styles.actions}>
-        <Pressable style={styles.btn} onPress={handleCall}>
-          <Text style={styles.btnText}>📞</Text>
+        <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#333' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCall}>
+          <Icon name="call" size={22} color="#208AEF" />
         </Pressable>
-        <Pressable style={styles.btn} onPress={handleCopy}>
-          <Text style={styles.btnText}>📋</Text>
+        <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#333' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCopy}>
+          <Icon name="content-copy" size={22} color={isDark ? '#CCC' : '#606060'} />
         </Pressable>
       </View>
     </View>
@@ -50,11 +53,9 @@ const styles = StyleSheet.create({
   row: {
     paddingVertical: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   label: {
     fontSize: 13,
-    color: '#808080',
     marginBottom: Spacing.half,
   },
   phone: {
@@ -70,7 +71,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.two + Spacing.one,
     borderRadius: 8,
-    backgroundColor: '#F0F0F3',
   },
   btnText: {
     fontSize: 18,

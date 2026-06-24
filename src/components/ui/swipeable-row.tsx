@@ -59,20 +59,15 @@ function toRadiusStyle(shape: SwipeShape): object {
 // ---------------------------------------------------------------------------
 
 /**
- * UnifiedSwipeableWrapper — canonical swipe-to-reveal container for every
- * swipeable list item in the app.
+ * UnifiedSwipeableWrapper — canonical swipe-to-reveal container.
  *
- * Architecture (adapted from src/components/SwipeableContactCard.jsx):
- *
- * • `overshootLeft/Right={false}` — bidirectional clamp; card physically
- *   can't fly past the action area.
- * • Fixed 72 px buttons — never collapse.
- * • `onLayout` height sync — foreground height is measured live and written
- *   to the background action row so heights are always locked (handles
- *   accordion expand/collapse seamlessly).
- * • Foreground card `borderRadius: 0` — relies entirely on the Swipeable
- *   `containerStyle`'s `overflow:'hidden'` + `borderRadius` for clipping.
- *   **No corner-fill strip needed.**
+ * Architecture:
+ * • overshootLeft/Right={false} — bidirectional clamp
+ * • Fixed 72px buttons — never collapse
+ * • onLayout height sync — foreground → actions row
+ * • Light responsive swipe: friction=1, threshold=30, overshootFriction=8
+ * • failOffsetY=[-20,20] — diagonal tolerance
+ * • overflow:hidden + borderRadius on container for perfect corner clipping
  */
 export function UnifiedSwipeableWrapper({
   children,
@@ -87,7 +82,7 @@ export function UnifiedSwipeableWrapper({
 
   const [cardHeight, setCardHeight] = useState(0);
   const radiusStyle = toRadiusStyle(borderRadius);
-  const actionsWidth = ACTION_BTN_W * 2; // 144
+  const actionsWidth = ACTION_BTN_W * 2;
 
   const renderRightActions = () => (
     <View style={[styles.actionsRow, { height: cardHeight, width: actionsWidth }]}>
@@ -112,12 +107,12 @@ export function UnifiedSwipeableWrapper({
     <View style={style}>
       <Swipeable
         renderRightActions={renderRightActions}
-        friction={1.5}
-        rightThreshold={40}
-        // Bidirectional clamp → card cannot fly past the action area.
+        friction={1}
+        rightThreshold={30}
+        overshootFriction={8}
+        failOffsetY={[-20, 20]}
         overshootLeft={false}
         overshootRight={false}
-        // Master clipping mask: all rounding lives here.
         containerStyle={[
           radiusStyle,
           {
@@ -127,9 +122,6 @@ export function UnifiedSwipeableWrapper({
         ]}
         childrenContainerStyle={styles.childrenContainer}
       >
-        {/* Foreground card — deliberately borderRadius: 0.
-            The containerStyle above owns ALL clipping; this guarantees
-            zero visible gap or corner bleed when the card slides. */}
         <View
           style={[styles.foregroundCard, { backgroundColor: cardBackgroundColor }]}
           onLayout={(e) => {
@@ -161,8 +153,6 @@ const styles = StyleSheet.create({
   },
   foregroundCard: {
     width: '100%',
-    // Intentional: NO borderRadius here!
-    // All clipping is done by Swipeable's containerStyle.
   },
   actionsRow: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 # eAddressList 项目架构文档
 
-> 最后更新：2026-06-17
+> 最后更新：2026-06-23
 
 ## 技术栈
 
@@ -18,6 +18,7 @@
 | react-native-gesture-handler | 2.31.1 | 手势系统（Swipeable / DraggableFlatList） |
 | react-native-reanimated | 4.3.1 | 动画引擎 |
 | react-native-draggable-flatlist | latest | 拖拽排序列表 |
+| expo-haptics | ~56.0.3 | 长按触觉反馈 |
 | xlsx (SheetJS) | 0.18.5 | Excel/CSV 解析与生成 |
 
 ## 目录结构
@@ -66,7 +67,7 @@ eAddressList/
 │   │       ├── address-book-dao.ts
 │   │       ├── contact-dao.ts
 │   │       └── directory-dao.ts
-│   ├── hooks/                    # useColorScheme, useTheme
+│   ├── hooks/                    # useColorScheme, useTheme, useHapticScale
 │   └── utils/
 │       └── import-export.ts      # fetch() 方式导入导出
 ```
@@ -155,8 +156,8 @@ eAddressList/
 1. 每层页面 header 有 **🔒编辑 / 🔓完成** 切换
 2. 默认锁闭：点击进入下级
 3. 解锁后启用：
-   - **长按卡片** → 拖拽排序（DraggableFlatList）
-   - **右划卡片** → 露出"编辑""删除"按钮（UnifiedSwipeableWrapper：onLayout 等高同步 + 前景去圆角 + 双向锁死越界）
+   - **长按卡片** → 震动反馈 + 拖拽排序（280ms 延迟、expo-haptics、DraggableFlatList）
+   - **右划卡片** → 露出"编辑""删除"按钮（UnifiedSwipeableWrapper：轻快滑动 friction=1 + 对角容差 failOffsetY=[-20,20] + 等高同步 + 双向锁死越界）
    - **点击** → 手风琴展开（二级目录）
 4. 所有删除需输入名称确认
 
@@ -190,4 +191,6 @@ eAddressList/
 | 导入用 fetch()+ArrayBuffer | 避免 expo-file-system base64 编码问题 |
 | 颜色用名称哈希 | 目录拖拽后颜色跟随内容而非位置 |
 | 手势用 DraggableFlatList+Swipeable | 组合手势实现长按拖拽+右划操作 |
+| 右划参数调优 | friction=1 threshold=30 failOffsetY=[-20,20]：降低阻尼、放宽角度容差、缩短触发距离 |
+| 长按震动反馈 | expo-haptics impactLight，280ms 延迟，在所有卡片组件中统一使用 useHapticScale |
 | 搜索 SQL REPLACE 处理空格 | 彻底解决半角/全角空格匹配问题 |

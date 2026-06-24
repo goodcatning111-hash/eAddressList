@@ -8,9 +8,11 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { PhoneRow } from '@/components/phone-row';
 import { getNameColor, getMorrisColor } from '@/constants/colors';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
 import type { Contact } from '@/db/types';
 
@@ -23,6 +25,18 @@ export default function ContactDetailScreen() {
   }>();
   const bookId = Number(id);
   const cId = Number(contactId);
+  const { isDark } = useTheme();
+
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    textPrimary: isDark ? '#E0E0E0' : '#000',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    border: isDark ? '#444' : '#E0E0E0',
+    btnBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    btnBorder: isDark ? '#444' : '#E0E0E5',
+    textTertiary: isDark ? '#888' : '#A0A0A0',
+  };
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +71,7 @@ export default function ContactDetailScreen() {
   if (!contact) {
     return (
       <View style={styles.center}>
-        <Text style={styles.notFound}>联系人不存在</Text>
+        <Text style={[styles.notFound, { color: theme.textSecondary }]}>联系人不存在</Text>
       </View>
     );
   }
@@ -83,7 +97,7 @@ export default function ContactDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen}>
+    <ScrollView style={[styles.screen, { backgroundColor: theme.screen }]}>
       {/* 头部头像区 */}
       <View style={styles.hero}>
         <View style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
@@ -91,11 +105,11 @@ export default function ContactDetailScreen() {
             {lastName}
           </Text>
         </View>
-        <Text style={styles.name}>{contact.name}</Text>
+        <Text style={[styles.name, { color: theme.textPrimary }]}>{contact.name}</Text>
       </View>
 
       {/* 信息卡片 */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
         {/* 手机号 */}
         {phones.map((phone, index) => (
           <PhoneRow
@@ -106,18 +120,18 @@ export default function ContactDetailScreen() {
         ))}
 
         {/* 组织路径 */}
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>路径</Text>
-          <Text style={styles.value}>
+        <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>路径</Text>
+          <Text style={[styles.value, { color: theme.textPrimary }]}>
             {contact.level1Dir} / {contact.level2Dir}
           </Text>
         </View>
 
         {/* 职务 */}
         {contact.position ? (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>职务</Text>
-            <Text style={styles.value}>{contact.position}</Text>
+          <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>职务</Text>
+            <Text style={[styles.value, { color: theme.textPrimary }]}>{contact.position}</Text>
           </View>
         ) : null}
 
@@ -130,17 +144,23 @@ export default function ContactDetailScreen() {
       {/* 操作按钮：编辑 + 收藏 */}
       <View style={styles.actions}>
         <Pressable
-          style={styles.editBtn}
+          style={({ pressed }) => [styles.editBtn, { backgroundColor: theme.btnBg, borderColor: theme.btnBorder }, pressed && { opacity: 0.7 }]}
           onPress={() =>
             router.push(`/book/${bookId}/contact/${contact.id}/edit`)
           }
         >
-          <Text style={styles.editBtnText}>✎ 编辑联系人</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Icon name="edit" size={18} color="#208AEF" />
+            <Text style={styles.editBtnText}> 编辑联系人</Text>
+          </View>
         </Pressable>
-        <Pressable style={styles.favActionBtn} onPress={handleToggleFav}>
-          <Text style={styles.favActionText}>
-            {isFav ? '⭐' : '☆'} {isFav ? '已收藏' : '收藏'}
-          </Text>
+        <Pressable style={({ pressed }) => [styles.favActionBtn, { backgroundColor: theme.btnBg, borderColor: theme.btnBorder }, pressed && { opacity: 0.7 }]} onPress={handleToggleFav}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Icon name={isFav ? 'star' : 'star-border'} size={22} color="#FFD700" />
+            <Text style={[styles.favActionText, { color: theme.textPrimary }]}>
+              {isFav ? ' 已收藏' : ' 收藏'}
+            </Text>
+          </View>
         </Pressable>
       </View>
 
@@ -161,7 +181,6 @@ const styles = StyleSheet.create({
   },
   notFound: {
     fontSize: 16,
-    color: '#808080',
   },
   // 头像区
   hero: {
@@ -186,7 +205,6 @@ const styles = StyleSheet.create({
   },
   // 信息卡片
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginHorizontal: Spacing.four,
     paddingHorizontal: Spacing.four,
@@ -195,11 +213,9 @@ const styles = StyleSheet.create({
   infoRow: {
     paddingVertical: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   label: {
     fontSize: 13,
-    color: '#808080',
     marginBottom: Spacing.half,
   },
   value: {
@@ -214,13 +230,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   favActionBtn: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
   favActionText: {
     fontSize: 16,
@@ -228,12 +242,10 @@ const styles = StyleSheet.create({
   },
   editBtn: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
   editBtnText: {
     fontSize: 16,

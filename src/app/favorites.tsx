@@ -7,8 +7,10 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { ContactRow } from '@/components/contact-row';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
 import type { Contact } from '@/db/types';
 
@@ -17,8 +19,19 @@ type FavoriteContact = Contact & { bookName: string };
 /** 收藏联系人列表页 */
 export default function FavoritesScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [favorites, setFavorites] = useState<FavoriteContact[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textTertiary: isDark ? '#888' : '#A0A0A0',
+    textPrimary: isDark ? '#E0E0E0' : '#000',
+    bookHeader: isDark ? '#CCC' : '#505050',
+    border: isDark ? '#333' : '#E0E0E0',
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -54,18 +67,18 @@ export default function FavoritesScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen}>
+    <ScrollView style={[styles.screen, { backgroundColor: theme.screen }]} bounces={true} alwaysBounceVertical={true}>
       {favorites.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>⭐</Text>
-          <Text style={styles.emptyText}>暂无收藏联系人</Text>
-          <Text style={styles.emptyHint}>在联系人详情页点击星标即可收藏</Text>
+          <Icon name="star" size={64} color="#FFD700" />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>暂无收藏联系人</Text>
+          <Text style={[styles.emptyHint, { color: theme.textTertiary }]}>在联系人详情页点击星标即可收藏</Text>
         </View>
       ) : (
         Array.from(grouped.entries()).map(([bookName, contacts]) => (
           <View key={bookName}>
-            <Text style={styles.bookHeader}>{bookName}</Text>
-            <View style={styles.card}>
+            <Text style={[styles.bookHeader, { color: theme.bookHeader }]}>{bookName}</Text>
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
               {contacts.map((contact) => (
                 <ContactRow
                   key={contact.id}
@@ -96,19 +109,17 @@ const styles = StyleSheet.create({
     paddingTop: 120,
   },
   emptyIcon: { fontSize: 64, marginBottom: Spacing.four },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#808080' },
-  emptyHint: { fontSize: 14, color: '#A0A0A0', marginTop: Spacing.one },
+  emptyText: { fontSize: 18, fontWeight: '600' },
+  emptyHint: { fontSize: 14, marginTop: Spacing.one },
   bookHeader: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#505050',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.two,
   },
   card: {
     marginHorizontal: Spacing.four,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: Spacing.three,

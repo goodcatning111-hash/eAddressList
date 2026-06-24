@@ -2,14 +2,17 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { ContactRow } from '@/components/contact-row';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
 import type { Contact } from '@/db/types';
 
@@ -25,7 +28,18 @@ interface ResultGroup {
 /** 全局搜索 — 跨所有通讯簿搜索，按通讯簿分组展示 */
 export default function GlobalSearchScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [query, setQuery] = useState('');
+
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textPrimary: isDark ? '#E0E0E0' : '#000',
+    bookHeader: isDark ? '#CCCCCC' : '#808080',
+    border: isDark ? '#444' : '#E0E0E5',
+    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+  };
   const [groups, setGroups] = useState<ResultGroup[]>([]);
   const [searching, setSearching] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,11 +87,12 @@ export default function GlobalSearchScreen() {
   );
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.searchBar}>
-        <Text style={{ fontSize: 16, marginRight: Spacing.two }}>🔍</Text>
+    <View style={[styles.screen, { backgroundColor: theme.screen }]}>
+      <View style={[styles.searchBar, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+        <Icon name="search" size={22} style={{ marginRight: Spacing.two }} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: theme.textPrimary }]}
+          placeholderTextColor={theme.textSecondary}
           value={query}
           onChangeText={handleChangeText}
           placeholder="搜索所有通讯簿中的联系人..."
@@ -85,15 +100,14 @@ export default function GlobalSearchScreen() {
           returnKeyType="search"
         />
         {query.length > 0 && (
-          <Text
-            style={{ fontSize: 18, color: '#C0C0C0', padding: Spacing.one }}
+          <Pressable
             onPress={() => {
               setQuery('');
               setGroups([]);
             }}
           >
-            ✕
-          </Text>
+            <Icon name="close" size={22} color={theme.textSecondary} />
+          </Pressable>
         )}
       </View>
 
@@ -113,9 +127,9 @@ export default function GlobalSearchScreen() {
             return (
               <View>
                 {isFirstInGroup && (
-                  <Text style={styles.bookHeader}>{(item as any)._groupName}</Text>
+                  <Text style={[styles.bookHeader, { color: theme.bookHeader }]}>{(item as any)._groupName}</Text>
                 )}
-                <View style={styles.card}>
+                <View style={[styles.card, { backgroundColor: theme.card }]}>
                   <ContactRow
                     contact={item}
                     onPress={() =>
@@ -131,15 +145,15 @@ export default function GlobalSearchScreen() {
           ListEmptyComponent={
             query.trim().length > 0 ? (
               <View style={styles.emptyState}>
-                <Text style={{ fontSize: 48, marginBottom: Spacing.three }}>🔍</Text>
-                <Text style={{ fontSize: 16, color: '#808080' }}>
+                <Icon name="search" size={48} style={{ marginBottom: Spacing.three }} />
+                <Text style={{ fontSize: 16, color: theme.textSecondary }}>
                   未找到匹配联系人
                 </Text>
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={{ fontSize: 48, marginBottom: Spacing.three }}>👆</Text>
-                <Text style={{ fontSize: 16, color: '#808080' }}>
+                <Icon name="touch-app" size={48} secondary />
+                <Text style={{ fontSize: 16, color: theme.textSecondary }}>
                   输入姓名或职务开始搜索
                 </Text>
               </View>
@@ -162,25 +176,21 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     margin: Spacing.four,
     borderRadius: 12,
     paddingHorizontal: Spacing.three,
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
   input: { flex: 1, fontSize: 16, paddingVertical: Spacing.two + Spacing.one },
   bookHeader: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#808080',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.one,
   },
   card: {
     marginHorizontal: Spacing.four,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: Spacing.three,

@@ -1,6 +1,6 @@
 # eAddressList API & 函数参考文档
 
-> 最后更新：2026-06-17
+> 最后更新：2026-06-23
 
 ## 数据库层 (`src/db/`)
 
@@ -155,6 +155,19 @@
 
 ---
 
+## Hooks (`src/hooks/`)
+
+### useHapticScale
+长按触觉反馈 Hook。返回一个无参回调函数，调用时触发 `impactLight` 震动。
+```typescript
+const haptic = useHapticScale();
+// 在长按回调中：haptic();
+```
+- 无 Reanimated 依赖，无视觉副作用
+- 被 `AddressBookCard`、`DirectoryCard`、`AccordionSection` 统一使用
+
+---
+
 ## 工具函数 (`src/utils/import-export.ts`)
 
 ### `importFile(bookId?: number): Promise<number>`
@@ -186,13 +199,14 @@
 
 统一的右划操作容器，全应用所有可滑动的列表项共用此组件。
 
-**四项核心机制：**
+**五项核心机制：**
 
 | 机制 | 实现 | 解决的问题 |
 |---|---|---|
 | 双向物理锁死 | `overshootLeft/Right={false}` | 卡片飞出界 / 按钮压扁 |
+| 轻快跟手滑动 | `friction={1}`, `rightThreshold={30}`, `overshootFriction={8}` | 滑动"卡手"、触发距离太长 |
+| 对角滑动容差 | `failOffsetY={[-20, 20]}` | 略带角度的滑动被竖向滚动拦截 |
 | onLayout 等高同步 | `useState` + 前景 View `onLayout` → 写入 actionsRow `height` | 不等高（含手风琴展开/折叠） |
-| 前景去圆角化 | 前景 `borderRadius: 0`；仅 `containerStyle` 统一裁剪 | 缝隙 / 漏角 |
 | 固定按钮宽度 | 每个按钮 `width: 72`，不用 flex | 按钮坍塌 |
 
 **Props:**
@@ -228,18 +242,20 @@
 可折叠手风琴。Props:
 - `title`, `count`, `bgColor`, `fgColor`
 - `expanded?` / `onToggle?` — 外部控制展开状态
-- `headerOnPress?` / `headerOnLongPress?` — 自定义头部交互
+- `headerOnPress?` / `headerOnLongPress?` — 自定义头部交互。长按自动触发震动反馈（280ms 延迟）
 - `footer?` — 展开后底部内容
-- `containerStyle?` — 覆盖外层容器样式（如滑动模式下设 `marginBottom: 0`）
+- `containerStyle?` — 覆盖外层容器样式
 - `children` — 联系人列表
 
 ### AddressBookCard
 通讯簿大卡片。Props: `book`, `index`(色板), `onPress`, `onLongPress?`
 - 颜色优先用 `book.colorIndex`，否则用 `index`
+- 长按自动触发震动反馈（280ms 延迟），回调 `onLongPress`
 
 ### DirectoryCard
 目录卡片。Props: `name`, `count`, `bgColor`, `fgColor`, `onPress`, `onLongPress?`
-- 颜色由父组件计算并传入：`colorIndex ≥ 0` 用自定义色，否则用 `hashIndex(name)`。
+- 颜色由父组件计算并传入：`colorIndex ≥ 0` 用自定义色，否则用 `hashIndex(name)`
+- 长按自动触发震动反馈（280ms 延迟），回调 `onLongPress`
 
 ### ContactRow
 联系人行（圆形头像+姓名+职务+手机号+箭头）。Props: `contact`, `onPress`
@@ -309,4 +325,7 @@ GestureHandlerRootView          ← 手势系统根容器
     AnimatedSplashOverlay        ← 启动动画
     Stack                        ← expo-router 导航栈
       / (9 routes)
+
+技术栈新增：expo-haptics（长按震动反馈）
+Hook 新增：useHapticScale（触觉反馈封装）
 ```

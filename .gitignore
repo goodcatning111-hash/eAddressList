@@ -45,6 +45,7 @@ example
 # 本地临时文件夹
 .claude/
 .vscode/
+docs/
 CLAUDE.md
 AGENTS.md
 

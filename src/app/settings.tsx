@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { importFile, exportJSON, shareTemplate } from '@/utils/import-export';
 import {
   getAllSlots,
@@ -20,6 +21,7 @@ import {
 } from '@/utils/save-manager';
 import { exportFullData, importFullData } from '@/db/dao/full-backup-dao';
 import { Spacing } from '@/constants/theme';
+import { useTheme, type ThemeMode } from '@/contexts/theme';
 import * as addressBookDao from '@/db/dao/address-book-dao';
 import * as contactDao from '@/db/dao/contact-dao';
 import type { AddressBook } from '@/db/types';
@@ -29,6 +31,7 @@ import type { AddressBook } from '@/db/types';
 // ---------------------------------------------------------------------------
 
 export default function SettingsScreen() {
+  const { mode, setMode, isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [books, setBooks] = useState<AddressBook[]>([]);
   const [slots, setSlots] = useState<SaveSlotMeta[]>([]);
@@ -39,6 +42,31 @@ export default function SettingsScreen() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [bookBreakdown, setBookBreakdown] = useState<string[]>([]);
   const [hasOrphans, setHasOrphans] = useState(false);
+
+  // Dark mode theme colours
+  const t = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    toggle: isDark ? '#333' : '#F0F0F3',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textTertiary: isDark ? '#888' : '#A0A0A0',
+    textPrimary: isDark ? '#E0E0E0' : '#000000',
+    border: isDark ? '#333' : '#E0E0E0',
+    slotPanelBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    slotRowBorder: isDark ? '#444' : '#E0E0E5',
+    slotFilledBg: isDark ? '#1A2A3A' : '#F0F7FF',
+    rowBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    menuBtnBg: isDark ? '#333' : '#F0F0F3',
+    aboutBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    warnBg: isDark ? '#332A00' : '#FFF3CD',
+    warnText: isDark ? '#FFD700' : '#856404',
+    slotRowSummary: isDark ? '#AAA' : '#808080',
+    slotRowDate: isDark ? '#888' : '#A0A0A0',
+    slotRowEmpty: isDark ? '#666' : '#C0C0C0',
+    arrow: isDark ? '#555' : '#C0C0C0',
+    overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
+  };
 
   /** 静默自动清理——导入/删除后后台执行，0 结果时不弹窗 */
   const runAutoCleanup = async () => {
@@ -284,9 +312,9 @@ export default function SettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: t.screen }]}>
         <ActivityIndicator size="large" color="#208AEF" />
-        <Text style={styles.loadingText}>处理中...</Text>
+        <Text style={[styles.loadingText, { color: t.textSecondary }]}>处理中...</Text>
       </View>
     );
   }
@@ -294,108 +322,144 @@ export default function SettingsScreen() {
   // ── UI ────────────────────────────────────────────────
 
   return (
-    <ScrollView style={styles.screen}>
+    <ScrollView style={[styles.screen, { backgroundColor: t.screen }]} bounces={true} alwaysBounceVertical={true}>
+      {/* ── 外观 ── */}
+      <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>外观</Text>
+      <View style={[styles.themeRow, { backgroundColor: t.card, borderBottomColor: t.border }]}>
+        <Text style={[styles.rowTitle, { color: t.textPrimary }]}>主题模式</Text>
+        <View style={{ flexDirection: 'row', gap: 4 }}>
+          {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
+            const active = mode === m;
+            const iconName = m === 'light' ? 'light-mode' as const : m === 'dark' ? 'dark-mode' as const : 'phone-android' as const;
+            const label = m === 'light' ? ' 浅色' : m === 'dark' ? ' 深色' : ' 跟随系统';
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setMode(m)}
+                style={({ pressed }) => [
+                  { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? '#208AEF' : t.toggle },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Icon name={iconName} size={18} color={active ? '#FFF' : t.textTertiary} />
+                  <Text style={{ fontSize: 13, color: active ? '#FFF' : t.textTertiary }}>{label}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {/* ── 数据管理 ── */}
-      <Text style={styles.sectionTitle}>数据管理</Text>
+      <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>数据管理</Text>
 
-      <Pressable style={styles.row} onPress={() => { loadData(); setSlotMode('save'); }}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => { loadData(); setSlotMode('save'); }}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowIcon}>💾</Text>
+          <Icon name="save" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>存档</Text>
-            <Text style={styles.rowDesc}>将当前全部数据保存到本地档位</Text>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>存档</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>将当前全部数据保存到本地档位</Text>
           </View>
         </View>
-        <Text style={styles.arrow}>▶</Text>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={styles.row} onPress={() => { loadData(); setSlotMode('load'); }}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => { loadData(); setSlotMode('load'); }}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowIcon}>📂</Text>
+          <Icon name="folder-open" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>读档</Text>
-            <Text style={styles.rowDesc}>从本地档位恢复数据（当前数据将被替换）</Text>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>读档</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>从本地档位恢复数据（当前数据将被替换）</Text>
           </View>
         </View>
-        <Text style={styles.arrow}>▶</Text>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={styles.row} onPress={handleImport}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={handleImport}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowIcon}>📥</Text>
+          <Icon name="file-download" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>导入数据</Text>
-            <Text style={styles.rowDesc}>支持 Excel (.xlsx)、CSV (.csv)、JSON 备份恢复</Text>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>导入数据</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>支持 Excel (.xlsx)、CSV (.csv)、JSON 备份恢复</Text>
           </View>
         </View>
-        <Text style={styles.arrow}>▶</Text>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={styles.row} onPress={openExportMenu}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={openExportMenu}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowIcon}>📤</Text>
+          <Icon name="file-upload" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>导出 JSON 备份</Text>
-            <Text style={styles.rowDesc}>选择通讯簿和样式后导出为 JSON 文件</Text>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>导出 JSON 备份</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>选择通讯簿和样式后导出为 JSON 文件</Text>
           </View>
         </View>
-        <Text style={styles.arrow}>▶</Text>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={styles.row} onPress={() => shareTemplate().catch(() => {})}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => shareTemplate().catch(() => {})}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowIcon}>📋</Text>
+          <Icon name="description" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>下载导入模板</Text>
-            <Text style={styles.rowDesc}>下载 Excel 模板文件，按格式填写后导入</Text>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>下载导入模板</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>下载 Excel 模板文件，按格式填写后导入</Text>
           </View>
         </View>
-        <Text style={styles.arrow}>▶</Text>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <View style={styles.aboutRow}>
-        <Text style={styles.aboutText}>
+      <View style={[styles.aboutRow, { backgroundColor: t.aboutBg, borderBottomColor: t.border }]}>
+        <Text style={[styles.aboutText, { color: t.textSecondary }]}>
           数据库共 {totalContacts} 条联系人记录（{bookBreakdown.join(' · ')}）
         </Text>
       </View>
 
       {hasOrphans && (
-        <View style={styles.warnRow}>
-          <Text style={styles.warnText}>
-            ⚠ 检测到部分联系人未关联到任何通讯簿，请执行「清理数据」
+        <View style={[styles.warnRow, { backgroundColor: t.warnBg }]}>
+          <Text style={[styles.warnText, { color: t.warnText }]}>
+            <Icon name="warning" size={18} color={t.warnText} /> 检测到部分联系人未关联到任何通讯簿，请执行「清理数据」
           </Text>
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>关于</Text>
-      <View style={styles.aboutRow}>
-        <Text style={styles.aboutText}>版本 1.0.0</Text>
-        <Text style={styles.aboutText}>eAddressList 电子通讯录</Text>
+      <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>关于</Text>
+      <View style={[styles.aboutRow, { backgroundColor: t.aboutBg, borderBottomColor: t.border }]}>
+        <Text style={[styles.aboutText, { color: t.textSecondary }]}>版本 1.0.0</Text>
+        <Text style={[styles.aboutText, { color: t.textSecondary }]}>eAddressList 电子通讯录</Text>
       </View>
 
       <View style={{ height: 60 }} />
 
       {/* ── 档位选择 Overlay ── */}
       {slotMode !== null && (
-        <View style={styles.overlay}>
-          <View style={styles.slotPanel}>
+        <View style={[styles.overlay, { backgroundColor: t.overlayBg }]}>
+          <View style={[styles.slotPanel, { backgroundColor: t.slotPanelBg }]}>
             <View style={styles.slotPanelHeader}>
-              <Text style={styles.slotPanelTitle}>
-                {slotMode === 'save' ? '💾 选择存档位' : '📂 选择读档位'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+                <Icon name={slotMode === 'save' ? 'save' : 'folder-open'} size={28} />
+                <Text style={[styles.slotPanelTitle, { color: t.textPrimary }]}>
+                  {slotMode === 'save' ? ' 选择存档位' : ' 选择读档位'}
+                </Text>
+              </View>
               <Pressable onPress={() => setSlotMode(null)}>
-                <Text style={{ fontSize: 18, color: '#808080' }}>✕</Text>
+                <Icon name="close" size={22} color={t.textSecondary} />
               </Pressable>
             </View>
-            <Text style={styles.slotPanelHint}>
+            <Text style={[styles.slotPanelHint, { color: t.textSecondary }]}>
               {slotMode === 'save'
                 ? '存档包含全部数据（排序、颜色、收藏）。点击已有档位将覆盖。'
-                : '⚠ 读档将替换当前全部数据，请谨慎操作。'}
+                : '读档将替换当前全部数据，请谨慎操作。'}
             </Text>
             {slots.map((slot) => (
               <Pressable
                 key={slot.index}
-                style={[styles.slotRow, slot.hasData && styles.slotRowFilled]}
+                style={({ pressed }) => [
+                  styles.slotRow,
+                  { borderColor: t.slotRowBorder },
+                  slot.hasData && { borderColor: '#208AEF', backgroundColor: t.slotFilledBg },
+                  pressed && { opacity: 0.7 },
+                ]}
                 onPress={() => {
                   setSlotMode(null);
                   if (slotMode === 'save') {
@@ -405,31 +469,31 @@ export default function SettingsScreen() {
                   }
                 }}
               >
-                <Text style={styles.slotRowIcon}>{slot.hasData ? '💾' : '📭'}</Text>
+                <Icon name={slot.hasData ? 'save' : 'folder'} size={28} style={{ marginRight: Spacing.three }} />
                 <View style={styles.slotRowText}>
-                  <Text style={styles.slotRowLabel}>存档位 {slot.index + 1}</Text>
+                  <Text style={[styles.slotRowLabel, { color: t.textPrimary }]}>存档位 {slot.index + 1}</Text>
                   {slot.hasData ? (
                     <>
-                      <Text style={styles.slotRowSummary}>{slot.summary}</Text>
-                      <Text style={styles.slotRowDate}>
+                      <Text style={[styles.slotRowSummary, { color: t.slotRowSummary }]}>{slot.summary}</Text>
+                      <Text style={[styles.slotRowDate, { color: t.slotRowDate }]}>
                         {new Date(slot.savedAt).toLocaleString()}
                       </Text>
                     </>
                   ) : (
-                    <Text style={styles.slotRowEmpty}>
+                    <Text style={[styles.slotRowEmpty, { color: t.slotRowEmpty }]}>
                       {slotMode === 'save' ? '点击存档' : '空'}
                     </Text>
                   )}
                 </View>
                 {slot.hasData && slotMode === 'load' && (
                   <Pressable
-                    style={styles.slotDeleteBtn}
+                    style={({ pressed }) => [styles.slotDeleteBtn, pressed && { opacity: 0.6 }]}
                     onPress={() => {
                       setSlotMode(null);
                       handleDeleteSlot(slot.index, slot);
                     }}
                   >
-                    <Text style={{ fontSize: 16, color: '#FF3B30' }}>🗑</Text>
+                    <Icon name="delete" size={22} color="#FF3B30" />
                   </Pressable>
                 )}
               </Pressable>
@@ -440,38 +504,42 @@ export default function SettingsScreen() {
 
       {/* ── 导出向导 Overlay ── */}
       {showExportMenu && (
-        <View style={styles.overlayCenter}>
-          <View style={styles.menuDialog}>
+        <View style={[styles.overlayCenter, { backgroundColor: t.overlayBg }]}>
+          <View style={[styles.menuDialog, { backgroundColor: t.menuDialogBg }]}>
             {exportStep === 'books' ? (
               <>
-                <Text style={styles.dialogTitle}>选择要导出的通讯簿</Text>
-                <Pressable style={styles.selectAllBtn} onPress={selectAllBooks}>
-                  <Text style={styles.selectAllText}>
-                    {selectedBookIds.size === books.length ? '✅ 已全选' : '☐ 全选'}
-                  </Text>
+                <Text style={[styles.dialogTitle, { color: t.textPrimary }]}>选择要导出的通讯簿</Text>
+                <Pressable style={({ pressed }) => [styles.selectAllBtn, pressed && { opacity: 0.6 }]} onPress={selectAllBooks}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Icon name={selectedBookIds.size === books.length ? 'check-box' : 'check-box-outline-blank'} size={18} color="#208AEF" />
+                    <Text style={styles.selectAllText}>{selectedBookIds.size === books.length ? ' 已全选' : ' 全选'}</Text>
+                  </View>
                 </Pressable>
                 <View style={styles.menuGroup}>
                   {books.map((b) => (
                     <Pressable
                       key={b.id}
-                      style={styles.menuBtn}
+                      style={({ pressed }) => [styles.menuBtn, { backgroundColor: t.menuBtnBg }, pressed && { opacity: 0.6 }]}
                       onPress={() => toggleBookSelection(b.id)}
                     >
-                      <Text style={styles.menuBtnText}>
-                        {selectedBookIds.has(b.id) ? '✅' : '☐'}  {b.name}（{b.contactCount} 人）
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Icon name={selectedBookIds.has(b.id) ? 'check-box' : 'check-box-outline-blank'} size={18} color="#208AEF" />
+                        <Text style={[styles.menuBtnText, { color: t.textPrimary }]}>
+                          {b.name}（{b.contactCount} 人）
+                        </Text>
+                      </View>
                     </Pressable>
                   ))}
                 </View>
                 <View style={styles.dialogActions}>
                   <Pressable
-                    style={styles.dialogCancel}
+                    style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
                     onPress={() => setShowExportMenu(false)}
                   >
-                    <Text style={{ fontSize: 16, color: '#808080' }}>取消</Text>
+                    <Text style={{ fontSize: 16, color: t.textSecondary }}>取消</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.dialogConfirm}
+                    style={({ pressed }) => [styles.dialogConfirm, pressed && { opacity: 0.8 }]}
                     onPress={() => setExportStep('style')}
                   >
                     <Text style={styles.dialogConfirmText}>下一步</Text>
@@ -480,37 +548,46 @@ export default function SettingsScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.dialogTitle}>导出格式</Text>
-                <Text style={{ fontSize: 13, color: '#808080', marginBottom: Spacing.four, textAlign: 'center' }}>
+                <Text style={[styles.dialogTitle, { color: t.textPrimary }]}>导出格式</Text>
+                <Text style={{ fontSize: 13, color: t.textSecondary, marginBottom: Spacing.four, textAlign: 'center' }}>
                   已选 {selectedBookIds.size} 个通讯簿
                 </Text>
                 <View style={styles.menuGroup}>
                   <Pressable
-                    style={styles.menuBtn}
+                    style={({ pressed }) => [styles.menuBtn, { backgroundColor: t.menuBtnBg }, pressed && { opacity: 0.6 }]}
                     onPress={() => {
                       setShowExportMenu(false);
                       setExportStep('books');
                       handleExport(Array.from(selectedBookIds), true);
                     }}
                   >
-                    <Text style={styles.menuBtnText}>🎨 含颜色样式</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="palette" size={18} />
+                      <Text style={[styles.menuBtnText, { color: t.textPrimary }]}> 含颜色样式</Text>
+                    </View>
                   </Pressable>
                   <Pressable
-                    style={styles.menuBtn}
+                    style={({ pressed }) => [styles.menuBtn, { backgroundColor: t.menuBtnBg }, pressed && { opacity: 0.6 }]}
                     onPress={() => {
                       setShowExportMenu(false);
                       setExportStep('books');
                       handleExport(Array.from(selectedBookIds), false);
                     }}
                   >
-                    <Text style={styles.menuBtnText}>📋 纯数据（无样式）</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="description" size={18} />
+                      <Text style={[styles.menuBtnText, { color: t.textPrimary }]}> 纯数据（无样式）</Text>
+                    </View>
                   </Pressable>
                 </View>
                 <Pressable
-                  style={styles.menuCancel}
+                  style={({ pressed }) => [styles.menuCancel, pressed && { opacity: 0.6 }]}
                   onPress={() => setExportStep('books')}
                 >
-                  <Text style={{ fontSize: 16, color: '#808080' }}>← 返回上一步</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Icon name="arrow-back" size={16} color={t.textSecondary} />
+                    <Text style={{ fontSize: 16, color: t.textSecondary }}> 返回上一步</Text>
+                  </View>
                 </Pressable>
               </>
             )}
@@ -527,14 +604,18 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F5F5F7' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F7' },
-  loadingText: { marginTop: Spacing.two, fontSize: 15, color: '#808080' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: Spacing.two, fontSize: 15 },
 
   // sections
+  themeRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: Spacing.three, paddingHorizontal: Spacing.four,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#808080',
     textTransform: 'uppercase',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.five,
@@ -542,7 +623,6 @@ const styles = StyleSheet.create({
   },
   sectionTip: {
     fontSize: 12,
-    color: '#888',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.three,
     lineHeight: 17,
@@ -551,20 +631,17 @@ const styles = StyleSheet.create({
   // slot overlay
   overlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
     zIndex: 10,
   },
   overlayCenter: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   dialogTitle: { fontSize: 18, fontWeight: '700', marginBottom: Spacing.four, textAlign: 'center' },
   slotPanel: {
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: Spacing.four,
@@ -580,7 +657,7 @@ const styles = StyleSheet.create({
   },
   slotPanelTitle: { fontSize: 18, fontWeight: '700' },
   slotPanelHint: {
-    fontSize: 12, color: '#808080',
+    fontSize: 12,
     marginBottom: Spacing.three,
     lineHeight: 17,
   },
@@ -592,18 +669,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: Spacing.one,
     borderWidth: 1,
-    borderColor: '#E0E0E5',
-  },
-  slotRowFilled: {
-    borderColor: '#208AEF',
-    backgroundColor: '#F0F7FF',
   },
   slotRowIcon: { fontSize: 28, marginRight: Spacing.three },
   slotRowText: { flex: 1 },
   slotRowLabel: { fontSize: 15, fontWeight: '600' },
-  slotRowSummary: { fontSize: 12, color: '#808080', marginTop: 2 },
-  slotRowDate: { fontSize: 11, color: '#A0A0A0', marginTop: 1 },
-  slotRowEmpty: { fontSize: 12, color: '#C0C0C0', marginTop: 2 },
+  slotRowSummary: { fontSize: 12, marginTop: 2 },
+  slotRowDate: { fontSize: 11, marginTop: 1 },
+  slotRowEmpty: { fontSize: 12, marginTop: 2 },
   slotDeleteBtn: { padding: Spacing.two },
 
   // rows
@@ -611,31 +683,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingVertical: Spacing.three + Spacing.half,
     paddingHorizontal: Spacing.four,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
   },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   rowIcon: { fontSize: 28, marginRight: Spacing.three },
   rowText: { flex: 1 },
   rowTitle: { fontSize: 16, fontWeight: '500' },
-  rowDesc: { fontSize: 13, color: '#808080', marginTop: 2 },
-  arrow: { fontSize: 12, color: '#C0C0C0' },
+  rowDesc: { fontSize: 13, marginTop: 2 },
+  arrow: { fontSize: 12 },
 
   // about
   aboutRow: {
-    backgroundColor: '#FFFFFF',
     paddingVertical: Spacing.three + Spacing.half,
     paddingHorizontal: Spacing.four,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
     gap: Spacing.one,
   },
-  aboutText: { fontSize: 14, color: '#808080' },
+  aboutText: { fontSize: 14 },
   menuDialog: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: Spacing.four,
     width: '85%',
@@ -650,7 +717,6 @@ const styles = StyleSheet.create({
   menuBtn: {
     paddingVertical: Spacing.two + Spacing.one,
     alignItems: 'center',
-    backgroundColor: '#F0F0F3',
   },
   menuBtnText: { fontSize: 15, fontWeight: '500' },
   menuCancel: { paddingVertical: Spacing.two, alignItems: 'center', marginTop: Spacing.one },
@@ -665,11 +731,10 @@ const styles = StyleSheet.create({
   dialogConfirm: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.four, backgroundColor: '#208AEF', borderRadius: 10 },
   dialogConfirmText: { fontSize: 16, color: '#FFFFFF', fontWeight: '600' },
   warnRow: {
-    backgroundColor: '#FFF3CD',
     marginHorizontal: Spacing.four,
     borderRadius: 8,
     padding: Spacing.two + Spacing.half,
     marginBottom: Spacing.three,
   },
-  warnText: { fontSize: 13, color: '#856404', textAlign: 'center' },
+  warnText: { fontSize: 13, textAlign: 'center' },
 });

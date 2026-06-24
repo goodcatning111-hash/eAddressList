@@ -2,14 +2,17 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { ContactRow } from '@/components/contact-row';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
 import type { Contact } from '@/db/types';
 
@@ -18,6 +21,16 @@ export default function SearchScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const bookId = Number(id);
+  const { isDark } = useTheme();
+
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textPrimary: isDark ? '#E0E0E0' : '#000',
+    border: isDark ? '#444' : '#E0E0E5',
+    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+  };
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Contact[]>([]);
@@ -57,22 +70,23 @@ export default function SearchScreen() {
   }, []);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.screen }]}>
       {/* 搜索栏 */}
-      <View style={styles.searchBar}>
-        <Text style={styles.searchIcon}>🔍</Text>
+      <View style={[styles.searchBar, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+        <Icon name="search" size={22} style={{ marginRight: Spacing.two }} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: theme.textPrimary }]}
           value={query}
           onChangeText={handleChangeText}
           placeholder="搜索联系人姓名..."
+          placeholderTextColor={theme.textSecondary}
           autoFocus
           returnKeyType="search"
         />
         {query.length > 0 && (
-          <Text style={styles.clearBtn} onPress={() => setQuery('')}>
-            ✕
-          </Text>
+          <Pressable onPress={() => setQuery('')}>
+            <Icon name="close" size={22} color={theme.textSecondary} />
+          </Pressable>
         )}
       </View>
 
@@ -96,13 +110,13 @@ export default function SearchScreen() {
           ListEmptyComponent={
             query.trim().length > 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyText}>未找到匹配联系人</Text>
+                <Icon name="search" size={48} style={{ marginBottom: Spacing.three }} />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>未找到匹配联系人</Text>
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>👆</Text>
-                <Text style={styles.emptyText}>输入姓名开始搜索</Text>
+                <Icon name="touch-app" size={48} secondary />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>输入姓名开始搜索</Text>
               </View>
             )
           }
@@ -126,12 +140,10 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     margin: Spacing.four,
     borderRadius: 12,
     paddingHorizontal: Spacing.three,
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
   searchIcon: {
     fontSize: 16,
@@ -144,7 +156,6 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     fontSize: 18,
-    color: '#C0C0C0',
     padding: Spacing.one,
   },
   emptyList: {
@@ -162,6 +173,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#808080',
   },
 });

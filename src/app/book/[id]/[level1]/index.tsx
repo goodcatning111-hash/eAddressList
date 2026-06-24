@@ -11,14 +11,127 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import DraggableFlatList from 'react-native-draggable-flatlist';
+import { Icon } from '@/components/icon';
 import { AccordionSection } from '@/components/ui/accordion-section';
 import { UnifiedSwipeableWrapper } from '@/components/ui/swipeable-row';
 import { ContactRow } from '@/components/contact-row';
-import { getMorrisColor, hashIndex, MorrisColors } from '@/constants/colors';
+import { getMorrisColorForTheme, hashIndex, MorrisColors, lightenColor, getContactBg } from '@/constants/colors';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
 import * as directoryDao from '@/db/dao/directory-dao';
-import type { Level2Group } from '@/db/types';
+import type { Level2Group, Contact } from '@/db/types';
+
+// ---------------------------------------------------------------------------
+// Contact-reorder list (flat contact list with section dividers)
+// ---------------------------------------------------------------------------
+
+type FlatItem = { type: 'header'; key: string; sectionKey: string; title: string; count: number; bg: string; fg: string }
+              | { type: 'contact'; key: string; contact: Contact; sectionKey: string; sectionBg: string; sectionFg: string };
+
+function buildFlatList(groups: Level2Group[], isDark: boolean): FlatItem[] {
+  const items: FlatItem[] = [];
+  for (const g of groups) {
+    const color = getMorrisColorForTheme(
+      g.colorIndex >= 0 ? g.colorIndex : hashIndex(g.level2Dir, MorrisColors.length), isDark
+    );
+    items.push({ type: 'header', key: `h-${g.level2Dir}`, sectionKey: g.level2Dir, title: g.level2Dir, count: g.contacts.length, bg: color.bg, fg: color.fg });
+    for (const c of g.contacts) {
+      items.push({ type: 'contact', key: `c-${c.id}`, contact: c, sectionKey: g.level2Dir, sectionBg: color.bg, sectionFg: color.fg });
+    }
+  }
+  return items;
+}
+
+function ContactReorderView({ bookId, level1Dir, groups, onSaved, theme }: { bookId: number; level1Dir: string; groups: Level2Group[]; onSaved: () => void; theme: Record<string, string> }) {
+  const { isDark } = useTheme();
+  const router = useRouter();
+  const items = buildFlatList(groups, isDark);
+
+  return (
+    <View style={{ flex: 1, paddingHorizontal: Spacing.four }}>
+      <DraggableFlatList
+        bounces={true}
+        alwaysBounceVertical={true}
+        data={items}
+        keyExtractor={(item) => item.key}
+        onDragEnd={async ({ data }) => {
+          // Rebuild groups from the reordered flat list
+          const newGroups: { sectionKey: string; contacts: Contact[] }[] = [];
+          let currentSection: string | null = null;
+          for (const item of data) {
+            if (item.type === 'header') {
+              currentSection = item.sectionKey;
+              // Deduplicate: remove previous contacts of same section
+              const existing = newGroups.find(g => g.sectionKey === currentSection);
+              if (!existing) newGroups.push({ sectionKey: item.sectionKey!, contacts: [] });
+            } else if (item.type === 'contact' && currentSection !== null) {
+              const group = newGroups.find(g => g.sectionKey === currentSection);
+              if (group) group.contacts.push(item.contact!);
+            }
+          }
+          // Update database
+          const db = await (await import('@/db/database')).getDatabase();
+          for (const ng of newGroups) {
+            for (let i = 0; i < ng.contacts.length; i++) {
+              await db.runAsync(
+                'UPDATE contacts SET level2_dir = ?, updated_at = ? WHERE id = ?',
+                [ng.sectionKey, Date.now(), ng.contacts[i].id]
+              );
+            }
+          }
+          // Also update directory_order sort
+          for (let i = 0; i < groups.length; i++) {
+            const g = groups[i];
+            const exists = await db.getFirstAsync<{ id: number }>(
+              'SELECT id FROM directory_order WHERE address_book_id = ? AND level = 2 AND parent_dir = ? AND dir_name = ?',
+              [bookId, level1Dir, g.level2Dir]
+            );
+            if (exists) {
+              await db.runAsync('UPDATE directory_order SET sort_order = ? WHERE id = ?', [i, exists.id]);
+            }
+          }
+          onSaved();
+        }}
+        renderItem={({ item, drag, isActive }) => {
+          if (item.type === 'header') {
+            return (
+              <View style={[{ backgroundColor: item.bg, borderRadius: 12, paddingVertical: Spacing.two, paddingHorizontal: Spacing.four, marginTop: Spacing.three, marginBottom: Spacing.one }]}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: item.fg }}>{item.title} ({item.count})</Text>
+              </View>
+            );
+          }
+          // Contact item
+          const c = item.contact!;
+          const lastName = c.name.length > 0 ? c.name[c.name.length - 1] : '?';
+          const avatarColor = c.colorIndex >= 0 ? getMorrisColorForTheme(c.colorIndex, isDark) : getMorrisColorForTheme(hashIndex(c.name, MorrisColors.length), isDark);
+          const primaryPhone = c.mobilePhones ? c.mobilePhones.split(',')[0].trim() : '';
+          return (
+            <Pressable
+              style={[
+                { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.two, paddingHorizontal: Spacing.two, backgroundColor: getContactBg(item.sectionBg!, isDark), borderRadius: 8, marginBottom: Spacing.half },
+                isActive && { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8 }
+              ]}
+              onPress={() => router.push(`/book/${bookId}/contact/${c.id}`)}
+              onLongPress={drag}
+              delayLongPress={280}
+            >
+              <View style={[{ width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', backgroundColor: avatarColor.bg, marginRight: Spacing.two }]}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: avatarColor.fg }}>{lastName}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '500', color: isDark ? '#E0E0E0' : '#000' }}>{c.name}</Text>
+                {c.position ? <Text style={{ fontSize: 12, color: isDark ? '#AAA' : '#606060' }} numberOfLines={1}>{c.position}</Text> : null}
+              </View>
+              {primaryPhone ? <Text style={{ fontSize: 13, color: isDark ? '#AAA' : '#606060', marginRight: Spacing.one }}>{primaryPhone}</Text> : null}
+            </Pressable>
+          );
+        }}
+      />
+      <View style={{ height: 40 }} />
+    </View>
+  );
+}
 
 /** 页面 3：二级目录手风琴 + 联系人列表 — 支持编辑模式 */
 export default function Level2Screen() {
@@ -27,11 +140,13 @@ export default function Level2Screen() {
   const { id, level1 } = useLocalSearchParams<{ id: string; level1: string }>();
   const bookId = Number(id);
   const level1Dir = decodeURIComponent(level1 ?? '');
+  const { isDark } = useTheme();
 
   const [groups, setGroups] = useState<Level2Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [contactReorderMode, setContactReorderMode] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // 弹窗
@@ -42,6 +157,27 @@ export default function Level2Screen() {
   const [dialogText, setDialogText] = useState('');
   const [dialogTarget, setDialogTarget] = useState('');
   const [dialogColorIdx, setDialogColorIdx] = useState(0);
+
+  // Dark mode theme colours
+  const theme = {
+    screen: isDark ? '#121212' : '#F5F5F7',
+    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    toggle: isDark ? '#333' : '#F0F0F3',
+    toggleActive: isDark ? '#443322' : '#FFE5CC',
+    textSecondary: isDark ? '#AAA' : '#808080',
+    textPrimary: isDark ? '#E0E0E0' : '#000000',
+    border: isDark ? '#333' : '#E0E0E0',
+    editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
+    editHintBorder: isDark ? '#444' : '#FFE0B2',
+    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBorder: isDark ? '#444' : '#D0D0D5',
+    toolBtnBg: isDark ? '#333' : '#FFFFFF',
+    toolBtnBorder: isDark ? '#444' : '#E0E0E5',
+    menuBtnBg: isDark ? '#333' : '#F0F0F3',
+    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -138,59 +274,77 @@ export default function Level2Screen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.screen }]}>
         <ActivityIndicator size="large" color="#208AEF" />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.screen }]}>
       {/* 工具栏 */}
       <View style={styles.toolbar}>
         <Pressable
-          style={styles.editToggle}
+          style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle }, pressed && { opacity: 0.7 }]}
           onPress={async () => {
             if (!editMode) {
               await directoryDao.syncAllDirOrders(bookId);
               // 进入编辑模式时折叠所有手风琴
               setExpandedGroups(new Set());
             }
-            setEditMode(!editMode);
+            if (editMode && contactReorderMode) { setContactReorderMode(false); setEditMode(false); } else { setEditMode(!editMode); }
           }}
         >
-          <Text style={{ fontSize: 16 }}>{editMode ? '🔓 完成' : '🔒 编辑'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Icon name={editMode ? 'check' : 'edit'} size={18} />
+            <Text style={{ fontSize: 16, color: theme.textPrimary }}>{editMode ? ' 完成' : ' 编辑'}</Text>
+          </View>
         </Pressable>
+        {editMode && (
+          <Pressable
+            style={({ pressed }) => [styles.editToggle, contactReorderMode && { backgroundColor: theme.toggleActive }, pressed && { opacity: 0.7 }]}
+            onPress={() => setContactReorderMode(!contactReorderMode)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name={contactReorderMode ? 'business' : 'people'} size={14} />
+              <Text style={{ fontSize: 14, color: theme.textPrimary }}>{contactReorderMode ? ' 部门排序' : ' 联系人排序'}</Text>
+            </View>
+          </Pressable>
+        )}
         <View style={styles.toolActions}>
           <Pressable
-            style={styles.toolBtn}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: theme.toolBtnBg, borderColor: theme.toolBtnBorder }, pressed && { opacity: 0.6 }]}
             onPress={() => router.push(`/book/${bookId}/search`)}
           >
-            <Text style={styles.toolIcon}>🔍</Text>
+            <Icon name="search" size={18} />
           </Pressable>
           <Pressable
-            style={styles.toolBtn}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: theme.toolBtnBg, borderColor: theme.toolBtnBorder }, pressed && { opacity: 0.6 }]}
             onPress={() => setShowNewMenu(true)}
           >
-            <Text style={styles.toolIcon}>＋</Text>
+            <Icon name="add" size={18} />
           </Pressable>
         </View>
       </View>
 
       {editMode && (
-        <View style={styles.editHint}>
+        <View style={[styles.editHint, { backgroundColor: theme.editHintBg, borderBottomColor: theme.editHintBorder }]}>
           <Text style={{ fontSize: 12, color: '#FF9500' }}>
             长按拖拽排序 · 右划编辑/删除 · 点击展开
           </Text>
         </View>
       )}
-      <Text style={styles.summary}>
+      <Text style={[styles.summary, { color: theme.textSecondary }]}>
         {level1Dir} · {groups.length} 个部门 · {totalCount} 人
       </Text>
 
-      {editMode ? (
+      {contactReorderMode ? (
+        <ContactReorderView bookId={bookId} level1Dir={level1Dir} groups={groups} onSaved={() => { loadData(); setContactReorderMode(false); }} theme={theme} />
+      ) : editMode ? (
         <View style={styles.body}>
           <DraggableFlatList
+            bounces={true}
+            alwaysBounceVertical={true}
             data={groups}
             keyExtractor={(item) => item.level2Dir}
             onDragEnd={async ({ data }) => {
@@ -212,13 +366,12 @@ export default function Level2Screen() {
               setGroups(data);
             }}
             renderItem={({ item, drag, isActive }) => {
-              const color = item.colorIndex >= 0
-                ? getMorrisColor(item.colorIndex)
-                : getMorrisColor(hashIndex(item.level2Dir, MorrisColors.length));
+              const color = getMorrisColorForTheme(
+                item.colorIndex >= 0 ? item.colorIndex : hashIndex(item.level2Dir, MorrisColors.length),
+                isDark
+              );
               const isExpanded = expandedGroups.has(item.level2Dir);
               const hasSubItems = item.contacts.length > 0;
-              // Principle 1 (Shape Inheritance): dynamic shape per spec §3.2.
-              // Top-rounded + bottom-flat when expanded, uniform when collapsed.
               const dynamicShape = (isExpanded && hasSubItems)
                 ? { borderTopStartRadius: 12, borderTopEndRadius: 12, borderBottomStartRadius: 0, borderBottomEndRadius: 0 }
                 : 12;
@@ -245,9 +398,7 @@ export default function Level2Screen() {
                         return next;
                       });
                     }}
-                    headerOnLongPress={() => drag()}
-                    // Principle 2 (Zero-Gap): suppress internal margin.
-                    // Match bottom corners to dynamic shape so inner & outer masks align.
+                    headerOnLongPress={drag}
                     containerStyle={
                       isExpanded && hasSubItems
                         ? { marginBottom: 0, borderBottomStartRadius: 0, borderBottomEndRadius: 0 }
@@ -259,6 +410,7 @@ export default function Level2Screen() {
                         key={contact.id}
                         contact={contact}
                         onPress={() => {}}
+                        backgroundColor={getContactBg(color.bg, isDark)}
                       />
                     ))}
                   </AccordionSection>
@@ -269,11 +421,12 @@ export default function Level2Screen() {
           <View style={{ height: 24 }} />
         </View>
       ) : (
-        <ScrollView style={styles.body}>
+        <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
           {groups.map((group) => {
-            const color = group.colorIndex >= 0
-              ? getMorrisColor(group.colorIndex)
-              : getMorrisColor(hashIndex(group.level2Dir, MorrisColors.length));
+            const color = getMorrisColorForTheme(
+              group.colorIndex >= 0 ? group.colorIndex : hashIndex(group.level2Dir, MorrisColors.length),
+              isDark
+            );
             return (
               <View key={group.level2Dir} style={styles.dirRow}>
                 <AccordionSection
@@ -284,16 +437,17 @@ export default function Level2Screen() {
                   containerStyle={{ marginBottom: 0 }}
                   footer={
                     <Pressable
-                      style={styles.addContactBtn}
+                      style={[styles.addContactBtn, { borderTopColor: theme.border }]}
                       onPress={() =>
                         router.push(
                           `/book/${bookId}/contact/new?l1=${encodeURIComponent(level1Dir)}&l2=${encodeURIComponent(group.level2Dir)}`,
                         )
                       }
                     >
-                      <Text style={{ fontSize: 15, color: '#208AEF' }}>
-                        ＋ 新增联系人
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Icon name="add" size={15} color="#208AEF" />
+                        <Text style={{ fontSize: 15, color: '#208AEF' }}> 新增联系人</Text>
+                      </View>
                     </Pressable>
                   }
                 >
@@ -304,6 +458,7 @@ export default function Level2Screen() {
                       onPress={() =>
                         router.push(`/book/${bookId}/contact/${contact.id}`)
                       }
+                      backgroundColor={getContactBg(color.bg, isDark)}
                     />
                   ))}
                 </AccordionSection>
@@ -316,12 +471,12 @@ export default function Level2Screen() {
 
       {/* 新建菜单弹窗 */}
       {showNewMenu && (
-        <View style={styles.overlay}>
-          <View style={styles.menuDialog}>
-            <Text style={styles.dialogTitle}>新建</Text>
+        <View style={[styles.overlay, { backgroundColor: theme.overlayBg }]}>
+          <View style={[styles.menuDialog, { backgroundColor: theme.menuDialogBg }]}>
+            <Text style={[styles.dialogTitle, { color: theme.textPrimary }]}>新建</Text>
             <View style={styles.menuGroup}>
               <Pressable
-                style={styles.menuBtn}
+                style={({ pressed }) => [styles.menuBtn, { backgroundColor: theme.menuBtnBg }, pressed && { opacity: 0.6 }]}
                 onPress={() => {
                   setShowNewMenu(false);
                   router.push(
@@ -329,17 +484,23 @@ export default function Level2Screen() {
                   );
                 }}
               >
-                <Text style={styles.menuBtnText}>👤 新建联系人</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="person-add" size={18} />
+                  <Text style={[styles.menuBtnText, { color: theme.textPrimary }]}> 新建联系人</Text>
+                </View>
               </Pressable>
-              <Pressable style={styles.menuBtn} onPress={() => { setShowNewMenu(false); openCreate(); }}>
-                <Text style={styles.menuBtnText}>📁 新建二级目录</Text>
+              <Pressable style={({ pressed }) => [styles.menuBtn, { backgroundColor: theme.menuBtnBg }, pressed && { opacity: 0.6 }]} onPress={() => { setShowNewMenu(false); openCreate(); }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="create-new-folder" size={18} />
+                  <Text style={[styles.menuBtnText, { color: theme.textPrimary }]}> 新建二级目录</Text>
+                </View>
               </Pressable>
             </View>
             <Pressable
-              style={styles.menuCancel}
+              style={({ pressed }) => [styles.menuCancel, pressed && { opacity: 0.6 }]}
               onPress={() => setShowNewMenu(false)}
             >
-              <Text style={{ fontSize: 16, color: '#808080' }}>取消</Text>
+              <Text style={{ fontSize: 16, color: theme.textSecondary }}>取消</Text>
             </Pressable>
           </View>
         </View>
@@ -347,17 +508,18 @@ export default function Level2Screen() {
 
       {/* 弹窗（重命名+排序） */}
       {showDialog && (
-        <View style={styles.overlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>{dialogTitle}</Text>
+        <View style={[styles.overlay, { backgroundColor: theme.overlayBg }]}>
+          <View style={[styles.dialog, { backgroundColor: theme.dialogBg }]}>
+            <Text style={[styles.dialogTitle, { color: theme.textPrimary }]}>{dialogTitle}</Text>
             <TextInput
-              style={styles.dialogInput}
+              style={[styles.dialogInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
               value={dialogText}
               onChangeText={setDialogText}
               placeholder="请输入目录名称"
+              placeholderTextColor={theme.textSecondary}
               autoFocus
             />
-            <Text style={{ fontSize: 13, color: '#808080', marginBottom: Spacing.two }}>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: Spacing.two }}>
               选择主题色：
             </Text>
             <View style={styles.colorRow}>
@@ -375,13 +537,13 @@ export default function Level2Screen() {
             </View>
             <View style={styles.dialogActions}>
               <Pressable
-                style={styles.dialogCancel}
+                style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
                 onPress={() => setShowDialog(false)}
               >
-                <Text style={{ fontSize: 16, color: '#808080' }}>取消</Text>
+                <Text style={{ fontSize: 16, color: theme.textSecondary }}>取消</Text>
               </Pressable>
               <Pressable
-                style={styles.dialogConfirm}
+                style={({ pressed }) => [styles.dialogConfirm, pressed && { opacity: 0.8 }]}
                 onPress={handleDialogConfirm}
               >
                 <Text style={{ fontSize: 16, color: '#FFF', fontWeight: '600' }}>
@@ -410,26 +572,22 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: 8,
-    backgroundColor: '#F0F0F3',
   },
   editHint: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#FFF8E1',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#FFE0B2',
     alignItems: 'center',
   },
   toolActions: { flexDirection: 'row', gap: Spacing.two },
   toolBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#E0E0E5',
+    borderWidth: 1,
   },
   toolIcon: { fontSize: 18 },
   summary: {
-    fontSize: 13, color: '#808080',
+    fontSize: 13,
     paddingHorizontal: Spacing.four, paddingVertical: Spacing.two,
   },
   body: { flex: 1, paddingHorizontal: Spacing.four },
@@ -440,9 +598,8 @@ const styles = StyleSheet.create({
   },
   iconSm: {
     width: 30, height: 30, borderRadius: 15,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#E0E0E5',
+    borderWidth: 1,
   },
   colorRow: {
     flexDirection: 'row',
@@ -464,11 +621,9 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center', alignItems: 'center', zIndex: 10,
   },
   menuDialog: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: Spacing.four,
     width: '80%',
@@ -482,7 +637,6 @@ const styles = StyleSheet.create({
   menuBtn: {
     paddingVertical: Spacing.two + Spacing.one,
     alignItems: 'center',
-    backgroundColor: '#F0F0F3',
   },
   menuBtnText: {
     fontSize: 16,
@@ -493,14 +647,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dialog: {
-    backgroundColor: '#FFFFFF', borderRadius: 16,
+    borderRadius: 16,
     padding: Spacing.four, width: '80%', maxWidth: 320,
   },
   dialogTitle: {
     fontSize: 18, fontWeight: '600', marginBottom: Spacing.four, textAlign: 'center',
   },
   dialogInput: {
-    borderWidth: 1, borderColor: '#D0D0D5', borderRadius: 10,
+    borderWidth: 1, borderRadius: 10,
     paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + Spacing.one,
     fontSize: 16, marginBottom: Spacing.four,
   },
@@ -517,7 +671,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E0E0E0',
     marginTop: Spacing.one,
   },
 });

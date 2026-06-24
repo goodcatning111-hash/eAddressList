@@ -8,8 +8,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Icon } from '@/components/icon';
 import { Spacing } from '@/constants/theme';
 import { MorrisColors } from '@/constants/colors';
+import { useTheme } from '@/contexts/theme';
 import type { ContactFormData, Contact } from '@/db/types';
 
 interface Props {
@@ -45,6 +47,7 @@ export function ContactForm({
   onSave,
   onDelete,
 }: Props) {
+  const { isDark } = useTheme();
   const [name, setName] = useState('');
   const [level1Dir, setLevel1Dir] = useState('');
   const [level2Dir, setLevel2Dir] = useState('');
@@ -123,51 +126,57 @@ export function ContactForm({
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F7' }]} keyboardShouldPersistTaps="handled">
       {/* 姓名 */}
-      <Text style={styles.label}>姓名 *</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>姓名 *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
         value={name}
         onChangeText={setName}
         placeholder="请输入姓名"
+        placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
       />
 
       {/* 头像颜色 */}
-      <Text style={styles.label}>头像颜色</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>头像颜色</Text>
       <View style={styles.colorRow}>
         {MorrisColors.map((mc, i) => (
           <Pressable
             key={i}
-            style={[
+            style={({ pressed }) => [
               styles.colorDot,
               { backgroundColor: mc.bg },
               colorIndex === i && styles.colorDotSelected,
+              pressed && { opacity: 0.6 },
             ]}
             onPress={() => setColorIndex(i)}
           />
         ))}
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.colorDot,
             styles.colorDotDefault,
+            { backgroundColor: isDark ? '#333' : '#F0F0F3' },
             colorIndex === -1 && styles.colorDotSelected,
+            pressed && { opacity: 0.6 },
           ]}
           onPress={() => setColorIndex(-1)}
         >
-          <Text style={{ fontSize: 14, color: '#808080' }}>↺</Text>
+          <Icon name="refresh" size={20} color={isDark ? '#AAA' : '#808080'} />
         </Pressable>
       </View>
 
       {/* 一级目录 */}
-      <Text style={styles.label}>一级目录 *</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>一级目录 *</Text>
       <View style={styles.chipList}>
         {level1Options.map((opt) => (
           <Pressable
             key={opt}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
+              { backgroundColor: isDark ? '#333' : '#F0F0F3', borderColor: isDark ? '#555' : '#E0E0E5' },
               level1Dir === opt && styles.chipSelected,
+              pressed && { opacity: 0.6 },
             ]}
             onPress={() => {
               setLevel1Dir(opt);
@@ -178,6 +187,7 @@ export function ContactForm({
             <Text
               style={[
                 styles.chipText,
+                { color: isDark ? '#CCC' : '#505050' },
                 level1Dir === opt && styles.chipTextSelected,
               ]}
             >
@@ -187,27 +197,31 @@ export function ContactForm({
         ))}
       </View>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
         value={level1Dir}
         onChangeText={setLevel1Dir}
         placeholder="或手动输入新的一级目录"
+        placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
       />
 
       {/* 二级目录 */}
-      <Text style={styles.label}>二级目录 *</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>二级目录 *</Text>
       <View style={styles.chipList}>
         {level2Options.map((opt) => (
           <Pressable
             key={opt}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
+              { backgroundColor: isDark ? '#333' : '#F0F0F3', borderColor: isDark ? '#555' : '#E0E0E5' },
               level2Dir === opt && styles.chipSelected,
+              pressed && { opacity: 0.6 },
             ]}
             onPress={() => setLevel2Dir(opt)}
           >
             <Text
               style={[
                 styles.chipText,
+                { color: isDark ? '#CCC' : '#505050' },
                 level2Dir === opt && styles.chipTextSelected,
               ]}
             >
@@ -217,34 +231,37 @@ export function ContactForm({
         ))}
       </View>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
         value={level2Dir}
         onChangeText={setLevel2Dir}
         placeholder="或手动输入新的二级目录"
+        placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
       />
 
       {/* 职务 */}
-      <Text style={styles.label}>职务</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>职务</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
         value={position}
         onChangeText={setPosition}
         placeholder="请输入职务（选填）"
+        placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
       />
 
       {/* 办公电话 */}
-      <Text style={styles.label}>办公电话</Text>
+      <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>办公电话</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
         value={officePhone}
         onChangeText={setOfficePhone}
         placeholder="请输入办公电话（选填）"
+        placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
         keyboardType="phone-pad"
       />
 
       {/* 手机号（支持多个） */}
       <View style={styles.phoneHeader}>
-        <Text style={styles.label}>手机号（选填）</Text>
+        <Text style={[styles.label, { color: isDark ? '#CCC' : '#505050' }]}>手机号（选填）</Text>
         <Pressable onPress={addPhone}>
           <Text style={styles.addBtn}>+ 添加手机号</Text>
         </Pressable>
@@ -252,31 +269,32 @@ export function ContactForm({
       {mobilePhones.map((phone, index) => (
         <View key={index} style={styles.phoneRow}>
           <TextInput
-            style={[styles.input, styles.phoneInput]}
+            style={[styles.input, styles.phoneInput, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF', borderColor: isDark ? '#555' : '#D0D0D5', color: isDark ? '#E0E0E0' : '#000' }]}
             value={phone}
             onChangeText={(v) => updatePhone(index, v)}
             placeholder={`手机号 ${index + 1}`}
+            placeholderTextColor={isDark ? '#888' : '#A0A0A0'}
             keyboardType="phone-pad"
           />
           {mobilePhones.length > 1 && (
             <Pressable
-              style={styles.removeBtn}
+              style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.6 }]}
               onPress={() => removePhone(index)}
             >
-              <Text style={styles.removeBtnText}>✕</Text>
+              <Icon name="close" size={18} color="#FF3B30" />
             </Pressable>
           )}
         </View>
       ))}
 
       {/* 保存按钮 */}
-      <Pressable style={styles.saveBtn} onPress={handleSave}>
+      <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSave}>
         <Text style={styles.saveBtnText}>保存</Text>
       </Pressable>
 
       {/* 删除按钮（仅编辑模式） */}
       {onDelete && (
-        <Pressable style={styles.deleteBtn} onPress={handleDelete}>
+        <Pressable style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.6 }]} onPress={handleDelete}>
           <Text style={styles.deleteBtnText}>删除联系人</Text>
         </Pressable>
       )}
@@ -294,18 +312,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#505050',
     marginTop: Spacing.four,
     marginBottom: Spacing.one + Spacing.half,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D0D0D5',
     borderRadius: 10,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + Spacing.one,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
   },
   chipList: {
     flexDirection: 'row',
@@ -317,9 +332,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.two + Spacing.half,
     borderRadius: 16,
-    backgroundColor: '#F0F0F3',
     borderWidth: 1,
-    borderColor: '#E0E0E5',
   },
   chipSelected: {
     backgroundColor: '#208AEF',
@@ -327,7 +340,6 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    color: '#505050',
   },
   chipTextSelected: {
     color: '#FFFFFF',
@@ -403,7 +415,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   colorDotDefault: {
-    backgroundColor: '#F0F0F3',
   },
   colorDotSelected: {
     borderColor: '#208AEF',

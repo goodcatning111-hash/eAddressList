@@ -1,87 +1,46 @@
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
+import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider as ExpoThemeProvider, DefaultTheme, DarkTheme } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
+import { ThemeProvider, useTheme } from '@/contexts/theme';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+const NavLightTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#F5F5F7' } };
+const NavDarkTheme  = { ...DarkTheme,  colors: { ...DarkTheme.colors,  background: '#121212' } };
 
+function InnerLayout() {
+  const { isDark } = useTheme();
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <Stack>
-        {/* 通讯簿门户 */}
+    <ExpoThemeProvider value={isDark ? NavDarkTheme : NavLightTheme}>
+      <Stack screenOptions={{ animation: 'slide_from_right', contentStyle: { backgroundColor: isDark ? '#121212' : '#F5F5F7' } }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-
-        {/* 一级目录列表 */}
-        <Stack.Screen
-          name="book/[id]/index"
-          options={{ title: '通讯簿', headerBackTitle: '返回' }}
-        />
-
-        {/* 二级目录手风琴 + 联系人 */}
-        <Stack.Screen
-          name="book/[id]/[level1]/index"
-          options={{ title: '', headerBackTitle: '返回' }}
-        />
-
-        {/* 联系人详情 */}
-        <Stack.Screen
-          name="book/[id]/contact/[contactId]/index"
-          options={{ title: '联系人详情', headerBackTitle: '返回' }}
-        />
-
-        {/* 编辑联系人 (modal) */}
-        <Stack.Screen
-          name="book/[id]/contact/[contactId]/edit"
-          options={{
-            title: '编辑联系人',
-            headerBackTitle: '取消',
-            presentation: 'modal',
-          }}
-        />
-
-        {/* 新建联系人 (modal) */}
-        <Stack.Screen
-          name="book/[id]/contact/new"
-          options={{
-            title: '新建联系人',
-            headerBackTitle: '取消',
-            presentation: 'modal',
-          }}
-        />
-
-        {/* 搜索 (modal) */}
-        <Stack.Screen
-          name="book/[id]/search"
-          options={{
-            title: '搜索',
-            headerBackTitle: '取消',
-            presentation: 'modal',
-          }}
-        />
-
-        {/* 全局搜索 */}
-        <Stack.Screen
-          name="search"
-          options={{ title: '全局搜索', headerBackTitle: '返回' }}
-        />
-
-        {/* 收藏联系人 */}
-        <Stack.Screen
-          name="favorites"
-          options={{ title: '⭐ 收藏联系人', headerBackTitle: '返回' }}
-        />
-
-        {/* 设置 */}
-        <Stack.Screen
-          name="settings"
-          options={{ title: '设置', headerBackTitle: '返回' }}
-        />
+        <Stack.Screen name="book/[id]/index" options={{ title: '通讯簿', headerBackTitle: '返回' }} />
+        <Stack.Screen name="book/[id]/[level1]/index" options={{ title: '', headerBackTitle: '返回' }} />
+        <Stack.Screen name="book/[id]/contact/[contactId]/index" options={{ title: '联系人详情', headerBackTitle: '返回' }} />
+        <Stack.Screen name="book/[id]/contact/[contactId]/edit" options={{ title: '编辑联系人', headerBackTitle: '取消', presentation: 'modal' }} />
+        <Stack.Screen name="book/[id]/contact/new" options={{ title: '新建联系人', headerBackTitle: '取消', presentation: 'modal' }} />
+        <Stack.Screen name="book/[id]/search" options={{ title: '搜索', headerBackTitle: '取消', presentation: 'modal' }} />
+        <Stack.Screen name="search" options={{ title: '全局搜索', headerBackTitle: '返回' }} />
+        <Stack.Screen name="favorites" options={{ title: '收藏联系人', headerBackTitle: '返回' }} />
+        <Stack.Screen name="settings" options={{ title: '设置', headerBackTitle: '返回' }} />
       </Stack>
-    </ThemeProvider>
+    </ExpoThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  const systemScheme = useColorScheme();
+  const isDark = systemScheme === 'dark';
+  const bg = isDark ? '#121212' : '#F5F5F7';
+  useEffect(() => { SystemUI.setBackgroundColorAsync(bg); }, [bg]);
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
+      <ThemeProvider>
+        <InnerLayout />
+      </ThemeProvider>
+      <AnimatedSplashOverlay />
     </GestureHandlerRootView>
   );
 }
