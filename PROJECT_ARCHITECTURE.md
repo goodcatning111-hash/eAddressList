@@ -1,6 +1,6 @@
 # eAddressList 项目架构文档
 
-> 最后更新：2026-06-23
+> 最后更新：2026-06-24
 
 ## 技术栈
 
@@ -8,18 +8,29 @@
 |---|---|---|
 | Expo | SDK 56 | 跨平台框架 |
 | React Native | 0.85.3 | UI 渲染 |
-| expo-router | 56.2.11 | 文件系统路由（Stack 导航） |
-| expo-sqlite | 56.0.4 | SQLite 本地数据库 |
-| expo-file-system/legacy | 56.0.7 | 文件读写（导出用） |
-| expo-document-picker | 56.0.4 | 文件选择器 |
-| expo-sharing | 56.0.16 | 系统分享 |
-| expo-clipboard | 56.0.3 | 剪贴板 |
-| expo-linking | 56.0.14 | 拨号 |
-| react-native-gesture-handler | 2.31.1 | 手势系统（Swipeable / DraggableFlatList） |
-| react-native-reanimated | 4.3.1 | 动画引擎 |
-| react-native-draggable-flatlist | latest | 拖拽排序列表 |
+| React | 19.2.3 | 前端框架 |
+| expo-router | ~56.2.11 | 文件系统路由（Stack 导航） |
+| expo-sqlite | ~56.0.5 | SQLite 本地数据库 |
+| expo-file-system | ~56.0.8 | 文件读写（导出 / 存档） |
+| expo-document-picker | ~56.0.4 | 文件选择器 |
+| expo-sharing | ~56.0.18 | 系统分享 |
+| expo-clipboard | ~56.0.4 | 剪贴板 |
+| expo-linking | ~56.0.14 | 拨号 |
 | expo-haptics | ~56.0.3 | 长按触觉反馈 |
-| xlsx (SheetJS) | 0.18.5 | Excel/CSV 解析与生成 |
+| expo-system-ui | ~56.0.5 | 系统背景色控制 |
+| expo-splash-screen | ~56.0.10 | 启动画面 |
+| expo-image | ~56.0.11 | 高性能图片 |
+| expo-symbols | ~56.0.6 | SF Symbols / Material 图标 |
+| @expo/ui | ~56.0.18 | Expo UI 组件库 |
+| @expo/vector-icons | ^15.0.2 | MaterialIcons 图标 |
+| @react-native-async-storage/async-storage | 2.2.0 | 键值持久化（主题偏好） |
+| react-native-gesture-handler | ~2.31.1 | 手势系统（Swipeable / DraggableFlatList） |
+| react-native-reanimated | 4.3.1 | 动画引擎（Keyframe / FadeIn） |
+| react-native-draggable-flatlist | ^4.0.3 | 拖拽排序列表 |
+| react-native-safe-area-context | ~5.7.0 | 安全区域 |
+| react-native-screens | 4.25.2 | 原生导航屏幕 |
+| react-native-worklets | 0.8.3 | Worklet 线程调度 |
+| xlsx (SheetJS) | ^0.18.5 | Excel/CSV 解析与生成 |
 
 ## 目录结构
 
@@ -28,37 +39,47 @@ eAddressList/
 ├── app.json
 ├── package.json
 ├── assets/
-│   └── images/                 # 图标资源
+│   └── images/                 # 图标资源（expo-logo.png, logo-glow.png）
 ├── src/
-│   ├── app/                    # expo-router 页面
-│   │   ├── _layout.tsx         # 根布局：GestureHandlerRootView + Stack
+│   ├── global.css              # CSS 自定义属性（字体族）
+│   ├── app/                    # expo-router 页面（10 routes）
+│   │   ├── _layout.tsx         # 根布局：GestureHandlerRootView + ThemeProvider + Stack
 │   │   ├── index.tsx           # 通讯簿门户（含编辑模式）
 │   │   ├── search.tsx          # 全局搜索
-│   │   ├── settings.tsx        # 导入/导出
+│   │   ├── favorites.tsx       # 收藏联系人
+│   │   ├── settings.tsx        # 导入/导出/存档管理
 │   │   └── book/[id]/          # 通讯簿内页面
 │   │       ├── index.tsx       # 一级目录列表
-│   │       ├── search.tsx      # 通讯簿内搜索
+│   │       ├── search.tsx      # 通讯簿内搜索 (modal)
 │   │       ├── [level1]/
 │   │       │   └── index.tsx   # 二级目录手风琴+联系人
 │   │       └── contact/
-│   │           ├── new.tsx     # 新建联系人
+│   │           ├── new.tsx     # 新建联系人 (modal, ?l1=&l2=)
 │   │           └── [contactId]/
 │   │               ├── index.tsx  # 联系人详情
-│   │               └── edit.tsx   # 编辑联系人
+│   │               └── edit.tsx   # 编辑联系人 (modal)
 │   ├── components/
 │   │   ├── address-book-card.tsx
 │   │   ├── directory-card.tsx
 │   │   ├── contact-row.tsx
 │   │   ├── contact-form.tsx
 │   │   ├── phone-row.tsx
-│   │   └── ui/
-│   │       ├── accordion-section.tsx
-│   │       ├── swipeable-row.tsx    # UnifiedSwipeableWrapper 统一右划容器
-│   │       └── collapsible.tsx
+│   │   ├── themed-text.tsx        # ThemedText — 主题感知文本组件
+│   │   ├── themed-view.tsx        # ThemedView — 主题感知容器组件
+│   │   ├── icon.tsx               # Icon — MaterialIcons 封装
+│   │   ├── animated-icon.tsx      # AnimatedSplashOverlay / AnimatedIcon 启动动画
+│   │   ├── animated-icon.web.tsx  # Web 端启动动画桩
+│   │   ├── animated-icon.module.css
+│   │   ├── ui/
+│   │   │   ├── accordion-section.tsx
+│   │   │   ├── swipeable-row.tsx  # UnifiedSwipeableWrapper 统一右划容器
+│   │   │   └── collapsible.tsx    # Collapsible 可折叠面板
 │   │   └── SwipeableContactCard.jsx  # 滑动组件参考实现（设计原型）
 │   ├── constants/
-│   │   ├── theme.ts
+│   │   ├── theme.ts               # Colors / Spacing / Fonts
 │   │   └── colors.ts              # Morris 色板 + 工具函数
+│   ├── contexts/
+│   │   └── theme.tsx              # ThemeProvider + useTheme + useAppTheme
 │   ├── db/
 │   │   ├── types.ts
 │   │   ├── schema.ts
@@ -66,10 +87,16 @@ eAddressList/
 │   │   └── dao/
 │   │       ├── address-book-dao.ts
 │   │       ├── contact-dao.ts
-│   │       └── directory-dao.ts
-│   ├── hooks/                    # useColorScheme, useTheme, useHapticScale
+│   │       ├── directory-dao.ts
+│   │       └── full-backup-dao.ts
+│   ├── hooks/
+│   │   ├── use-color-scheme.ts    # 复用 react-native useColorScheme
+│   │   ├── use-color-scheme.web.ts
+│   │   ├── use-theme.ts           # useTheme — 返回 Colors[scheme]
+│   │   └── use-haptic-scale.ts    # useHapticScale — 长按震动反馈
 │   └── utils/
-│       └── import-export.ts      # fetch() 方式导入导出
+│       ├── import-export.ts       # fetch() 方式导入导出
+│       └── save-manager.ts        # 6 槽位存档管理
 ```
 
 ## 数据模型
@@ -118,18 +145,37 @@ eAddressList/
 
 ## 路由架构
 
+共 10 条路由，`animation: 'slide_from_right'`：
+
 ```
 /                                    → 通讯簿门户（首页）
 /search                              → 全局搜索
-/settings                            → 导入/导出设置
+/favorites                           → 收藏联系人列表
+/settings                            → 导入/导出/存档管理
 /book/[id]                           → 一级目录列表
 /book/[id]/search                    → 通讯簿内搜索 (modal)
 /book/[id]/[level1]                  → 二级目录手风琴+联系人
 /book/[id]/contact/[contactId]       → 联系人详情
 /book/[id]/contact/[contactId]/edit  → 编辑联系人 (modal)
 /book/[id]/contact/new               → 新建联系人 (modal, ?l1=&l2=)
-/favorites                            → 收藏联系人列表
 ```
+
+## 主题系统
+
+应用采用双层主题架构：
+
+1. **`src/contexts/theme.tsx` — ThemeProvider + useTheme + useAppTheme**
+   - 管理 `light` / `dark` / `system` 三种模式
+   - 通过 `AsyncStorage` 持久化用户偏好
+   - `useAppTheme()` 返回统一的 30 色调色板（screen、card、border、text、dialogBg 等）
+2. **`src/hooks/use-theme.ts` — useTheme（组件级）**
+   - 从 `constants/theme.ts` 的 `Colors.light` / `Colors.dark` 取色
+   - 被 `ThemedText`、`ThemedView` 等基础组件使用
+3. **`src/app/_layout.tsx` — 根布局**
+   - 外层 `ThemeProvider`（自定义 context）决定 isDark
+   - 内层 `ExpoThemeProvider`（expo-router）驱动导航栏主题
+   - `expo-system-ui` 设置系统背景色（`#121212` / `#F5F5F7`）
+   - `AnimatedSplashOverlay` 覆盖在最上层播放启动动画
 
 ## 页面流转
 
@@ -188,6 +234,7 @@ eAddressList/
 |---|---|
 | 目录不建独立表 | 减少 schema 复杂度，通过 contacts 聚合查询 |
 | directory_order 独立表 | 目录排序需持久化，直接存 contacts 太重量 |
+| 双层主题架构 | contexts/theme 管理用户偏好+AsyncStorage 持久化；hooks/use-theme 提供组件级取色；expo-router ThemeProvider 驱动导航栏 |
 | 导入用 fetch()+ArrayBuffer | 避免 expo-file-system base64 编码问题 |
 | 颜色用名称哈希 | 目录拖拽后颜色跟随内容而非位置 |
 | 手势用 DraggableFlatList+Swipeable | 组合手势实现长按拖拽+右划操作 |

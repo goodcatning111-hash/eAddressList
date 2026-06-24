@@ -1,6 +1,6 @@
 # eAddressList API & 函数参考文档
 
-> 最后更新：2026-06-23
+> 最后更新：2026-06-24
 
 ## 数据库层 (`src/db/`)
 
@@ -73,7 +73,7 @@
 
 ---
 
-### full-backup-dao.ts — 全量导入/导出
+### full-backup-dao.ts (`src/db/dao/`) — 全量导入/导出
 
 | 方法 | 说明 |
 |---|---|
@@ -117,14 +117,14 @@
 |---|---|---|
 | `/` | 通讯簿门户 | 编辑模式：长按拖拽排序、右划编辑/删除 |
 | `/search` | 全局搜索 | 跨所有通讯簿模糊搜索 |
+| `/favorites` | 收藏联系人 | 按通讯簿分组展示，点击进入详情 |
+| `/settings` | 设置 | 导入(→选通讯簿→选文件)、导出 JSON、6 槽位存档管理 |
 | `/book/[id]` | 一级目录列表 | 编辑模式：长按拖拽排序、右划编辑/删除 |
 | `/book/[id]/[level1]` | 二级目录+手风琴 | 编辑模式：长按拖拽排序、右划编辑/删除、点击展开 |
+| `/book/[id]/search` | 通讯簿内搜索 | 300ms 去抖动 |
 | `/book/[id]/contact/[contactId]` | 联系人详情 | 拨号、复制、收藏切换、编辑入口 |
 | `/book/[id]/contact/[contactId]/edit` | 编辑联系人 (modal) | 表单含目录 chip 选择+自由输入 |
 | `/book/[id]/contact/new` | 新建联系人 (modal) | 支持 ?l1=&l2= 预填目录 |
-| `/book/[id]/search` | 通讯簿内搜索 | 300ms 去抖动 |
-| `/favorites` | 收藏联系人 | 按通讯簿分组展示，点击进入详情 |
-| `/settings` | 设置 | 导入(→选通讯簿→选文件)、导出 JSON |
 
 ### 编辑模式系统
 
@@ -155,9 +155,43 @@
 
 ---
 
+## Contexts (`src/contexts/`)
+
+### theme.tsx — ThemeProvider + useTheme + useAppTheme
+
+应用主题上下文，提供三种模式 + 统一调色板。
+
+**`ThemeProvider({ children })`**
+- 管理 `'light' | 'dark' | 'system'` 三种模式
+- 通过 `AsyncStorage`（key: `theme_mode`）持久化用户偏好
+- 内部用 `useColorScheme()` 检测系统主题
+
+**`useTheme(): ThemeCtx`**
+- 返回 `{ mode, setMode, isDark }`
+- `setMode(m)` 同步写入 AsyncStorage
+
+**`useAppTheme()`**
+- 返回统一的 30 色亮/暗调色板对象：
+  - 容器类：`screen`、`card`、`headerBg`、`dialogBg`、`overlayBg`、`inputBg`
+  - 文本类：`text`、`textSecondary`、`textTertiary`
+  - 控件类：`border`、`toggle`、`toggleActive`、`inputBorder`、`toolBtnBg`、`toolBtnBorder`、`menuBtnBg`、`editHintBg`、`editHintBorder`、`slotFilledBg`、`warnBg`
+  - 特殊类：`warnText`、`arrow`、`contactPhone`、`contactPosition`
+
+---
+
 ## Hooks (`src/hooks/`)
 
-### useHapticScale
+### useColorScheme (`use-color-scheme.ts`)
+直接 re-export `react-native` 的 `useColorScheme`。`.web.ts` 变体适配 Web 平台。
+
+### useTheme (`use-theme.ts`)
+从 `constants/theme.ts` 的 `Colors.light` / `Colors.dark` 取色，供组件级使用。
+```typescript
+const theme = useTheme(); // 返回 Colors[scheme]
+```
+被 `ThemedText`、`ThemedView`、`Collapsible` 等组件使用。
+
+### useHapticScale (`use-haptic-scale.ts`)
 长按触觉反馈 Hook。返回一个无参回调函数，调用时触发 `impactLight` 震动。
 ```typescript
 const haptic = useHapticScale();
@@ -194,6 +228,41 @@ const haptic = useHapticScale();
 ---
 
 ## UI 组件 (`src/components/`)
+
+### ThemedText (themed-text.tsx)
+
+主题感知文本组件，根据亮/暗模式自动切换颜色。
+
+**Props:**
+| Prop | 类型 | 说明 |
+|---|---|---|
+| `type?` | `'default' \| 'title' \| 'small' \| 'smallBold' \| 'subtitle' \| 'link' \| 'linkPrimary' \| 'code'` | 预设文本样式（字号+行高+字重） |
+| `themeColor?` | `ThemeColor` | 覆盖默认 text 色 |
+
+支持标准 `TextProps` 透传。
+
+### ThemedView (themed-view.tsx)
+
+主题感知容器组件，自动适配背景色。Props: `type?`（背景色 key，默认 `'background'`）。支持标准 `ViewProps` 透传。
+
+### Icon (icon.tsx)
+
+MaterialIcons 封装，自动跟随主题色。
+
+| Prop | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `name` | `MaterialIcons['name']` | 必填 | 图标名称 |
+| `size?` | `number` | `22` | 图标大小 |
+| `color?` | `string` | — | 自定义颜色，默认主题 text 色 |
+| `secondary?` | `boolean` | — | 使用 `textSecondary` 色 |
+
+### Collapsible (ui/collapsible.tsx)
+
+通用可折叠面板，点击标题 chevron 旋转 90°，内容 `FadeIn.duration(200)` 淡入。Props: `title` + `children`。
+
+### AnimatedSplashOverlay (animated-icon.tsx)
+
+启动动画叠加层。Reanimated `Keyframe` 驱动缩放+透明度（600ms），背景 `#208AEF`，动画完成后通过 `scheduleOnRN`（react-native-worklets）卸载。`AnimatedIcon` 可复用。
 
 ### UnifiedSwipeableWrapper (ui/swipeable-row.tsx)
 
@@ -321,11 +390,26 @@ const MorrisColors = [
 
 ```
 GestureHandlerRootView          ← 手势系统根容器
-  ThemeProvider                  ← 亮/暗主题
-    AnimatedSplashOverlay        ← 启动动画
-    Stack                        ← expo-router 导航栈
-      / (9 routes)
-
-技术栈新增：expo-haptics（长按震动反馈）
-Hook 新增：useHapticScale（触觉反馈封装）
+  ThemeProvider                  ← 自定义亮/暗/系统主题（AsyncStorage 持久化）
+    ExpoThemeProvider            ← expo-router 导航主题
+      Stack                      ← expo-router 导航栈（10 routes, slide_from_right）
+  AnimatedSplashOverlay          ← 启动动画叠加层（Keyframe + Reanimated）
 ```
+
+**主题双层架构：**
+- `src/contexts/theme.tsx` — `ThemeProvider`（`light`/`dark`/`system` 模式 + AsyncStorage）+ `useAppTheme()` 返回 30 色统一调色板
+- `src/hooks/use-theme.ts` — `useTheme()` 组件级取色（`Colors[scheme]`）
+- `ThemedText` / `ThemedView` / `Icon` 组件依赖上述 hooks 自动适配亮暗
+- `expo-system-ui` 在根组件设置系统背景色
+
+**技术栈新增：**
+- `expo-haptics`（长按震动反馈）
+- `expo-system-ui`（系统背景色控制）
+- `expo-splash-screen`（启动画面）
+- `expo-image`（高性能图片）
+- `expo-symbols`（SF Symbols / Material 图标）
+- `@expo/ui` / `@expo/vector-icons`（UI 组件+图标）
+- `@react-native-async-storage/async-storage`（主题偏好持久化）
+- `react-native-worklets`（Worklet 线程调度）
+- `react-native-safe-area-context` / `react-native-screens`（原生导航）
+

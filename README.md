@@ -43,16 +43,21 @@ npx expo start
 | 技术 | 用途 |
 |---|---|
 | [Expo SDK 56](https://docs.expo.dev/versions/v56.0.0/) | 跨平台框架 |
-| React Native 0.85.3 | UI 渲染引擎 |
-| expo-router | 文件系统路由 |
+| React Native 0.85.3 / React 19 | UI 渲染引擎 |
+| expo-router | 文件系统路由（Stack 导航） |
 | expo-sqlite | 本地 SQLite 数据库 |
 | react-native-gesture-handler | 手势交互（右划操作、长按拖拽） |
-| react-native-reanimated | 动画引擎 |
+| react-native-reanimated | 动画引擎（Keyframe / FadeIn / 启动动画） |
 | react-native-draggable-flatlist | 拖拽排序列表 |
 | expo-haptics | 触觉反馈（长按震动） |
+| expo-system-ui | 系统背景色控制 |
+| expo-image / expo-symbols | 高性能图片 + SF Symbols 图标 |
+| @expo/vector-icons | MaterialIcons 图标库 |
+| @react-native-async-storage/async-storage | 键值持久化（主题偏好） |
 | SheetJS (xlsx) | Excel / CSV 解析与模板生成 |
 | expo-file-system | 存档文件读写 |
-| expo-sharing | 系统分享 |
+| expo-sharing / expo-document-picker | 系统分享 / 文件选择 |
+| expo-splash-screen | 启动画面 |
 
 ---
 
@@ -60,26 +65,34 @@ npx expo start
 
 ```
 src/
-├── app/                        # 路由页面
-│   ├── _layout.tsx             #   根布局
+├── app/                        # 路由页面（10 routes）
+│   ├── _layout.tsx             #   根布局（GestureHandlerRootView + 双层 ThemeProvider + Stack）
 │   ├── index.tsx               #   通讯簿门户
 │   ├── search.tsx              #   全局搜索
 │   ├── favorites.tsx           #   收藏联系人
 │   ├── settings.tsx            #   设置（存档/读档/导入/导出）
 │   └── book/[id]/              #   通讯簿内子页面
 │       ├── index.tsx           #     一级目录
+│       ├── search.tsx          #     通讯簿内搜索 (modal)
 │       ├── [level1]/index.tsx  #     二级手风琴
 │       └── contact/            #     联系人 CRUD + 详情
 ├── components/
 │   ├── ui/
 │   │   ├── swipeable-row.tsx   #   UnifiedSwipeableWrapper
-│   │   └── accordion-section.tsx
+│   │   ├── accordion-section.tsx
+│   │   └── collapsible.tsx     #   Collapsible 可折叠面板
+│   ├── themed-text.tsx         #   ThemedText 主题文本
+│   ├── themed-view.tsx         #   ThemedView 主题容器
+│   ├── icon.tsx                #   Icon MaterialIcons 封装
+│   ├── animated-icon.tsx       #   AnimatedSplashOverlay 启动动画
 │   ├── SwipeableContactCard.jsx  # 滑动组件设计原型
 │   ├── address-book-card.tsx
 │   ├── directory-card.tsx
 │   ├── contact-row.tsx
 │   ├── contact-form.tsx
 │   └── phone-row.tsx
+├── contexts/
+│   └── theme.tsx               #   ThemeProvider + useTheme + useAppTheme
 ├── db/
 │   ├── schema.ts               #   建表 + 列迁移
 │   ├── database.ts
@@ -89,6 +102,9 @@ src/
 │   ├── colors.ts               #   Morris 10 色板
 │   └── theme.ts
 ├── hooks/
+│   ├── use-color-scheme.ts     #   系统配色检测
+│   ├── use-theme.ts            #   组件级主题取色
+│   └── use-haptic-scale.ts     #   长按震动反馈
 └── utils/
     ├── import-export.ts        #   导入 / 导出 / 模板生成
     └── save-manager.ts         #   6 槽位存档管理
