@@ -1,19 +1,18 @@
 /**
- * Morris 柔和色板 — 低饱和度、同色系深色变体
- * 浅色模式：柔和粉彩（原 Morris 色板）
- * 深色模式：去荧光、降饱和的灰调变体，卡片在暗背景上柔和浮现
+ * Morris 柔和色板 — 深色模式卡片：比浅色稍暗的同系莫兰迪色
+ * 保持粉彩柔和感，但略深一层，在暗背景上安定不刺眼
  */
 export const MorrisColors = [
-  { name: 'Sand',    bg: '#F5E6D3', fg: '#8B6914', darkBg: '#575046', darkFg: '#C8BEB0' },
-  { name: 'Sage',    bg: '#D4E8D0', fg: '#2D5A27', darkBg: '#4D564E', darkFg: '#B0C0B0' },
-  { name: 'Sky',     bg: '#D6E4F0', fg: '#1A4B7A', darkBg: '#4D5961', darkFg: '#B0BEC6' },
-  { name: 'Mauve',   bg: '#E8D5E0', fg: '#6B3A5A', darkBg: '#574F59', darkFg: '#C4B8C4' },
-  { name: 'Apricot', bg: '#F0D8C8', fg: '#8B4513', darkBg: '#595047', darkFg: '#C8BCB0' },
-  { name: 'Moss',    bg: '#D5E8D4', fg: '#3D6B35', darkBg: '#4F544A', darkFg: '#BCC2B0' },
-  { name: 'Lavender',bg: '#E0D5F0', fg: '#4A2D70', darkBg: '#524D5A', darkFg: '#BCB8CA' },
-  { name: 'Rose',    bg: '#F0D5D5', fg: '#8B3A3A', darkBg: '#594D4F', darkFg: '#C8B8BA' },
-  { name: 'Teal',    bg: '#D0E8E8', fg: '#1A6B6B', darkBg: '#495554', darkFg: '#B0C2C2' },
-  { name: 'Peach',   bg: '#F5E0D0', fg: '#8B5A3A', darkBg: '#594E4A', darkFg: '#C8BCB4' },
+  { name: 'Sand',    bg: '#F5E6D3', fg: '#8B6914', darkBg: '#D8C8B4', darkFg: '#6E5010' },
+  { name: 'Sage',    bg: '#D4E8D0', fg: '#2D5A27', darkBg: '#B5CAB0', darkFg: '#1E401A' },
+  { name: 'Sky',     bg: '#D6E4F0', fg: '#1A4B7A', darkBg: '#B6C6D4', darkFg: '#103660' },
+  { name: 'Mauve',   bg: '#E8D5E0', fg: '#6B3A5A', darkBg: '#C8B5C2', darkFg: '#502A44' },
+  { name: 'Apricot', bg: '#F0D8C8', fg: '#8B4513', darkBg: '#D2BAA8', darkFg: '#6E300A' },
+  { name: 'Moss',    bg: '#D5E8D4', fg: '#3D6B35', darkBg: '#B5C8B4', darkFg: '#2C5026' },
+  { name: 'Lavender',bg: '#E0D5F0', fg: '#4A2D70', darkBg: '#C2B5D2', darkFg: '#342058' },
+  { name: 'Rose',    bg: '#F0D5D5', fg: '#8B3A3A', darkBg: '#D2B5B5', darkFg: '#6E2828' },
+  { name: 'Teal',    bg: '#D0E8E8', fg: '#1A6B6B', darkBg: '#B0C8C8', darkFg: '#105050' },
+  { name: 'Peach',   bg: '#F5E0D0', fg: '#8B5A3A', darkBg: '#D5C0B0', darkFg: '#6E4028' },
 ];
 
 /** 根据索引获取色板颜色 */
@@ -42,12 +41,12 @@ export function lightenColor(hex: string, amount = 0.35): string {
   return `#${mix(r).toString(16).padStart(2, '0')}${mix(g).toString(16).padStart(2, '0')}${mix(b).toString(16).padStart(2, '0')}`;
 }
 
-/** 深色模式下微调背景形成层次（新色板较亮，需更强的暗化以区分联系人行） */
-function darkenContactBg(hex: string, amount = 0.18): string {
+/** 深色模式下微调背景形成层次（明亮卡片只需轻微暗化） */
+function darkenContactBg(hex: string, amount = 0.12): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  const mix = (c: number) => Math.round(c + (35 - c) * amount);
+  const mix = (c: number) => Math.round(c + (c * 0.75 - c) * amount);
   return `#${mix(r).toString(16).padStart(2, '0')}${mix(g).toString(16).padStart(2, '0')}${mix(b).toString(16).padStart(2, '0')}`;
 }
 

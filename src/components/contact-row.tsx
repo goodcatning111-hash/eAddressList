@@ -14,7 +14,22 @@ interface Props {
 /** 联系人行 — 头像 + 姓名 + 职务 + 主手机号 */
 export function ContactRow({ contact, onPress, backgroundColor }: Props) {
   const { isDark } = useTheme();
-  const arrowColor = isDark ? '#555' : '#C0C0C0';
+
+  // Bright card bg → dark text; dark bg / no bg → light text (standard dark mode)
+  const isLightBg = (() => {
+    if (!backgroundColor) return false;
+    const r = parseInt(backgroundColor.slice(1, 3), 16);
+    const g = parseInt(backgroundColor.slice(3, 5), 16);
+    const b = parseInt(backgroundColor.slice(5, 7), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 > 145;
+  })();
+
+  const nameColor      = (isDark && !isLightBg) ? '#E0E0E0' : '#111';
+  const positionColor  = (isDark && !isLightBg) ? '#AAA' : '#606060';
+  const phoneColor     = (isDark && !isLightBg) ? '#CCC' : '#505050';
+  const borderColor    = (isDark && !isLightBg) ? '#333' : '#D0D0D5';
+  const arrowColor     = (isDark && !isLightBg) ? '#555' : '#C0C0C0';
+
   const avatarColor = contact.colorIndex >= 0
     ? getMorrisColor(contact.colorIndex)
     : getNameColor(contact.name);
@@ -24,7 +39,7 @@ export function ContactRow({ contact, onPress, backgroundColor }: Props) {
     : '';
 
   return (
-    <Pressable style={({ pressed }) => [styles.row, { borderBottomColor: isDark ? '#333' : '#E0E0E0' }, backgroundColor ? { backgroundColor } : null, pressed && { opacity: 0.6 }]} onPress={onPress}>
+    <Pressable style={({ pressed }) => [styles.row, { borderBottomColor: borderColor }, backgroundColor ? { backgroundColor } : null, pressed && { opacity: 0.6 }]} onPress={onPress}>
       {/* 头像 */}
       <View style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
         <Text style={[styles.avatarText, { color: avatarColor.fg }]}>
@@ -34,9 +49,9 @@ export function ContactRow({ contact, onPress, backgroundColor }: Props) {
 
       {/* 信息 */}
       <View style={styles.info}>
-        <Text style={[styles.name, { color: isDark ? '#E0E0E0' : '#111' }]}>{contact.name}</Text>
+        <Text style={[styles.name, { color: nameColor }]}>{contact.name}</Text>
         {contact.position ? (
-          <Text style={[styles.position, { color: isDark ? '#AAA' : '#808080' }]} numberOfLines={1}>
+          <Text style={[styles.position, { color: positionColor }]} numberOfLines={1}>
             {contact.position}
           </Text>
         ) : null}
@@ -45,7 +60,7 @@ export function ContactRow({ contact, onPress, backgroundColor }: Props) {
       {/* 主手机号 + 箭头 */}
       <View style={styles.phoneArea}>
         {primaryPhone ? (
-          <Text style={[styles.phone, { color: isDark ? '#CCC' : '#606060' }]}>{primaryPhone}</Text>
+          <Text style={[styles.phone, { color: phoneColor }]}>{primaryPhone}</Text>
         ) : null}
         <Icon name="chevron-right" size={22} color={arrowColor} />
       </View>
