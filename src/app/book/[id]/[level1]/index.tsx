@@ -169,6 +169,7 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
   const layouts = useRef(new Map<string, { headerTop: number; headerH: number; footerBottom: number }>());
   const scrollY = useRef(0);
   const [floatingDir, setFloatingDir] = useState<string | null>(null);
+  const [floatingNearEnd, setFloatingNearEnd] = useState(false);
 
   // ── flat items (rebuilt on expand/collapse) ────────────────────────
   const flatItems: StickyItem[] = useMemo(() => {
@@ -190,24 +191,30 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
   const scrollRef = useRef<ScrollView>(null);
 
   // ── determine which header (if any) should float ───────────────────
+  const FOOTER_H = 60;               // ~"新增联系人" footer height
+  const R = 12;                      // card border radius
+  const HALF_R = R / 2;              // 6px — the user's "half radius"
+
   const recomputeFloating = useCallback((y: number) => {
     scrollY.current = y;
     let best: string | null = null;
+    let nearEnd = false;
 
     for (const g of groups) {
       if (!expandedGroups.has(g.level2Dir)) continue;
       const lo = layouts.current.get(g.level2Dir);
       if (!lo) continue;
-      // Strict `<` so header at y=0 doesn't float immediately.
-      // `+ 2` threshold prevents flicker when the real header is
-      // barely touching the edge.
-      if (lo.headerTop + 2 < y && lo.footerBottom > y) {
+      // Disappear later:  FOOTER_H - HALF_R = 54px
+      // Round earlier:    FOOTER_H + HALF_R = 66px
+      if (lo.headerTop + HALF_R < y && lo.footerBottom - (FOOTER_H - HALF_R) > y) {
         best = g.level2Dir;
+        nearEnd = lo.footerBottom - y < FOOTER_H + HALF_R; // 66px
         break;
       }
     }
 
     setFloatingDir(prev => (prev !== best ? best : prev));
+    setFloatingNearEnd(nearEnd);
   }, [groups, expandedGroups]);
 
   // ── on expand/collapse, re-measure then correct scroll position ────
@@ -238,8 +245,8 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
     return () => cancelAnimationFrame(id);
   }, [flatItems]);
 
-  // ── header render helper ───────────────────────────────────────────
-  const renderHeader = (group: Level2Group, isStickyOverlay: boolean) => {
+  // ── header render helper (normal, non-floating headers only) ──────
+  const renderHeader = (group: Level2Group) => {
     const color = getMorrisColorForTheme(
       group.colorIndex >= 0 ? group.colorIndex : hashIndex(group.level2Dir, MorrisColors.length),
       isDark,
@@ -251,28 +258,9 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
           backgroundColor: color.bg,
           paddingVertical: Spacing.three,
           paddingHorizontal: Spacing.four,
-          // Sticky overlay: no margins, no bottom corners, plus shadow
-          ...(isStickyOverlay
-            ? {
-                marginBottom: 0,
-                borderBottomStartRadius: 0,
-                borderBottomEndRadius: 0,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.12,
-                shadowRadius: 3,
-                elevation: 3,
-              }
-            : isExpanded
-              ? {
-                  borderTopStartRadius: 12,
-                  borderTopEndRadius: 12,
-                  marginBottom: 0,
-                }
-              : {
-                  borderRadius: 12,
-                  marginBottom: Spacing.three,
-                }),
+          ...(isExpanded
+            ? { borderTopStartRadius: 12, borderTopEndRadius: 12, marginBottom: 0 }
+            : { borderRadius: 12, marginBottom: Spacing.three }),
         }}
       >
         <Pressable onPress={() => wrappedToggle(group.level2Dir)}>
@@ -295,11 +283,46 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
   return (
     <View style={{ flex: 1 }}>
       {/* FLOATING OVERLAY — rendered OUTSIDE ScrollView, normal touch handling */}
-      {floatingGroup && expandedGroups.has(floatingGroup.level2Dir) && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, paddingHorizontal: Spacing.four }}>
-          {renderHeader(floatingGroup, true)}
-        </View>
-      )}
+      {floatingGroup && expandedGroups.has(floatingGroup.level2Dir) && (() => {
+        const fColor = getMorrisColorForTheme(
+          floatingGroup.colorIndex >= 0 ? floatingGroup.colorIndex : hashIndex(floatingGroup.level2Dir, MorrisColors.length),
+          isDark,
+        );
+        const isExpanded = expandedGroups.has(floatingGroup.level2Dir);
+        return (
+          // Sticky toolbar — flat top, bottom rounds only in the "near end" zone
+          // (66px–54px before footer).  No top border-radius = no peek-through.
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: Spacing.four,
+              right: Spacing.four,
+              zIndex: 10,
+              backgroundColor: fColor.bg,
+              borderBottomStartRadius: floatingNearEnd ? R : 0,
+              borderBottomEndRadius: floatingNearEnd ? R : 0,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.12,
+              shadowRadius: 3,
+              elevation: 3,
+            }}
+          >
+            <View style={{ paddingVertical: Spacing.three, paddingHorizontal: Spacing.four }}>
+              <Pressable onPress={() => wrappedToggle(floatingGroup.level2Dir)}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', flex: 1, marginRight: Spacing.two, minWidth: 0 }}>
+                    <Text style={{ fontSize: 17, fontWeight: '600', color: fColor.fg, flexShrink: 1 }} numberOfLines={1}>{floatingGroup.level2Dir}</Text>
+                    <Text style={{ fontSize: 14, opacity: 0.7, color: fColor.fg, marginLeft: Spacing.one }}>({floatingGroup.contacts.length})</Text>
+                  </View>
+                  <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={18} color={fColor.fg} />
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* MAIN SCROLL CONTENT */}
       <ScrollView
@@ -321,7 +344,7 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
                   layouts.current.set(item.group.level2Dir, { ...prev, headerTop: y, headerH: height });
                 }}
               >
-                {renderHeader(item.group, false)}
+                {renderHeader(item.group)}
               </View>
             );
           }
