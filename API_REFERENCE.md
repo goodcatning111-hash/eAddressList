@@ -1,6 +1,6 @@
 # eAddressList API & 函数参考文档
 
-> 最后更新：2026-06-24
+> 最后更新：2026-06-25
 
 ## 数据库层 (`src/db/`)
 
@@ -120,7 +120,7 @@
 | `/favorites` | 收藏联系人 | 按通讯簿分组展示，点击进入详情 |
 | `/settings` | 设置 | 导入(→选通讯簿→选文件)、导出 JSON、6 槽位存档管理 |
 | `/book/[id]` | 一级目录列表 | 编辑模式：长按拖拽排序、右划编辑/删除 |
-| `/book/[id]/[level1]` | 二级目录+手风琴 | 编辑模式：长按拖拽排序、右划编辑/删除、点击展开 |
+| `/book/[id]/[level1]` | 二级目录+手风琴（吸顶锁定） | 编辑模式：长按拖拽排序（组织/联系人）、右划编辑/删除；浏览模式：展开后表头吸顶 |
 | `/book/[id]/search` | 通讯簿内搜索 | 300ms 去抖动 |
 | `/book/[id]/contact/[contactId]` | 联系人详情 | 拨号、复制、收藏切换、编辑入口 |
 | `/book/[id]/contact/[contactId]/edit` | 编辑联系人 (modal) | 表单含目录 chip 选择+自由输入 |
@@ -221,6 +221,9 @@ const haptic = useHapticScale();
 
 ### `shareTemplate(): Promise<void>`
 用 `xlsx` 库生成模板文件（表头 + 一行示例），分享下载。
+
+### `exportExcel(): Promise<void>`
+导出全部联系人为 Excel 文件（与导入模板格式一致：一级目录、二级目录、姓名、职务、办公电话、手机号），使用系统分享。
 
 ### 自动清理
 导入数据、删除通讯簿/目录后自动执行 `cleanupDuplicates()` + `cleanupOrphans()`，有结果时弹窗报告。

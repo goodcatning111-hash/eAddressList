@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Icon } from '@/components/icon';
-import { importFile, exportJSON, shareTemplate } from '@/utils/import-export';
+import { importFile, exportJSON, shareTemplate, exportExcel } from '@/utils/import-export';
 import {
   getAllSlots,
   saveSlot,
@@ -52,13 +52,13 @@ export default function SettingsScreen() {
     textTertiary: isDark ? '#888' : '#A0A0A0',
     textPrimary: isDark ? '#E0E0E0' : '#000000',
     border: isDark ? '#3A3A3A' : '#E0E0E0',
-    slotPanelBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    slotPanelBg: isDark ? '#1E1E1E' : '#FFFFFF',
     slotRowBorder: isDark ? '#3A3A3A' : '#E0E0E5',
     slotFilledBg: isDark ? '#152535' : '#F0F7FF',
-    rowBg: isDark ? '#2A2A2A' : '#FFFFFF',
-    menuDialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    rowBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
     menuBtnBg: isDark ? '#383838' : '#F0F0F3',
-    aboutBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    aboutBg: isDark ? '#1E1E1E' : '#FFFFFF',
     warnBg: isDark ? '#332A00' : '#FFF3CD',
     warnText: isDark ? '#FFD700' : '#856404',
     slotRowSummary: isDark ? '#AAA' : '#808080',
@@ -365,6 +365,17 @@ export default function SettingsScreen() {
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: t.textPrimary }]}>导出 JSON 备份</Text>
             <Text style={[styles.rowDesc, { color: t.textSecondary }]}>选择通讯簿和样式后导出为 JSON 文件</Text>
+          </View>
+        </View>
+        <Icon name="chevron-right" size={22} color={t.arrow} />
+      </Pressable>
+
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => { setLoading(true); exportExcel().finally(() => setLoading(false)); }}>
+        <View style={styles.rowLeft}>
+          <Icon name="table-chart" size={28} style={{ marginRight: Spacing.three }} />
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: t.textPrimary }]}>导出 Excel 文件</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>按导入模板格式导出全部联系人为 Excel 文件</Text>
           </View>
         </View>
         <Icon name="chevron-right" size={22} color={t.arrow} />

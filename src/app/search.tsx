@@ -38,7 +38,7 @@ export default function GlobalSearchScreen() {
     textPrimary: isDark ? '#E0E0E0' : '#000',
     bookHeader: isDark ? '#CCCCCC' : '#808080',
     border: isDark ? '#444' : '#E0E0E5',
-    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBg: isDark ? '#1E1E1E' : '#FFFFFF',
   };
   const [groups, setGroups] = useState<ResultGroup[]>([]);
   const [searching, setSearching] = useState(false);

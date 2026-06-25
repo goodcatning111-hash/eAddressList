@@ -36,14 +36,16 @@ export function PhoneRow({ label, phone }: Props) {
   return (
     <View style={[styles.row, { borderBottomColor: isDark ? '#333' : '#E0E0E0' }]}>
       <Text style={[styles.label, { color: isDark ? '#AAA' : '#808080' }]}>{label}</Text>
-      <Text style={[styles.phone, { color: isDark ? '#E0E0E0' : '#111' }]}>{phone}</Text>
-      <View style={styles.actions}>
-        <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#333' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCall}>
-          <Icon name="call" size={22} color="#208AEF" />
-        </Pressable>
-        <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#333' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCopy}>
-          <Icon name="content-copy" size={22} color={isDark ? '#CCC' : '#606060'} />
-        </Pressable>
+      <View style={styles.phoneRow}>
+        <Text style={[styles.phone, { color: isDark ? '#E0E0E0' : '#111' }]} numberOfLines={1}>{phone}</Text>
+        <View style={styles.actions}>
+          <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#383838' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCall}>
+            <Icon name="call" size={20} color="#208AEF" />
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.btn, { backgroundColor: isDark ? '#383838' : '#F0F0F3' }, pressed && { opacity: 0.6 }]} onPress={handleCopy}>
+            <Icon name="content-copy" size={20} color={isDark ? '#CCC' : '#606060'} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -58,14 +60,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: Spacing.half,
   },
+  phoneRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   phone: {
     fontSize: 18,
     fontWeight: '500',
-    marginBottom: Spacing.two,
+    flex: 1,
+    marginRight: Spacing.two,
   },
   actions: {
     flexDirection: 'row',
     gap: Spacing.two,
+    flexShrink: 0,
   },
   btn: {
     paddingVertical: Spacing.one,

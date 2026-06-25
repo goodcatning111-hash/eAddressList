@@ -513,3 +513,55 @@ export async function shareTemplate(): Promise<void> {
     Alert.alert('提示', '分享模板失败，请重试');
   }
 }
+
+/** 导出全部联系人为 Excel（与导入模板格式一致） */
+export async function exportExcel(): Promise<void> {
+  try {
+    const db = await getDatabase();
+
+    const contacts = await db.getAllAsync<any>(
+      `SELECT c.level1_dir, c.level2_dir, c.name, c.position, c.office_phone, c.mobile_phones
+       FROM contacts c
+       JOIN address_books ab ON c.address_book_id = ab.id
+       ORDER BY ab.sort_order, c.level1_dir, c.level2_dir, c.name`,
+    );
+
+    if (contacts.length === 0) {
+      Alert.alert('提示', '暂无联系人数据可导出');
+      return;
+    }
+
+    const header = ['一级目录', '二级目录', '姓名', '职务', '办公电话', '手机号'];
+    const rows = contacts.map((c: any) => [
+      c.level1_dir ?? '',
+      c.level2_dir ?? '',
+      c.name ?? '',
+      c.position ?? '',
+      c.office_phone ?? '',
+      c.mobile_phones ?? '',
+    ]);
+
+    const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    sheet['!cols'] = [
+      { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, '通讯录');
+
+    const wbout = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+    const fileName = `通讯录_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filePath = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory ?? ''}${fileName}`;
+    await FileSystem.writeAsStringAsync(filePath, wbout, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    await Sharing.shareAsync(filePath, {
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dialogTitle: '导出通讯录 Excel',
+    });
+  } catch (err) {
+    console.error('[ExportExcel] 导出失败:', err);
+    Alert.alert('导出失败', '请重试');
+  }
+}

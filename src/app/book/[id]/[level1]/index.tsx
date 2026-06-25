@@ -433,13 +433,13 @@ export default function Level2Screen() {
     border: isDark ? '#3A3A3A' : '#E0E0E0',
     editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
     editHintBorder: isDark ? '#444' : '#FFE0B2',
-    dialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
     inputBg: isDark ? '#333' : '#FFFFFF',
     inputBorder: isDark ? '#444' : '#D0D0D5',
     toolBtnBg: isDark ? '#383838' : '#FFFFFF',
     toolBtnBorder: isDark ? '#3A3A3A' : '#E0E0E5',
     menuBtnBg: isDark ? '#383838' : '#F0F0F3',
-    menuDialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
     overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
   };
 
