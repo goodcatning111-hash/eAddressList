@@ -136,18 +136,18 @@ export default function PortalScreen() {
   // Dark mode theme colours
   const theme = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    toggle: isDark ? '#333' : '#F0F0F3',
-    toggleActive: isDark ? '#443322' : '#FFE5CC',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
+    toggle: isDark ? '#383838' : '#F0F0F3',
+    toggleActive: isDark ? '#383838' : '#E8E8EC',
     textSecondary: isDark ? '#AAA' : '#808080',
     textTertiary: isDark ? '#888' : '#A0A0A0',
     textPrimary: isDark ? '#E0E0E0' : '#000000',
-    border: isDark ? '#333' : '#E0E0E0',
-    headerBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    border: isDark ? '#3A3A3A' : '#E0E0E0',
+    headerBg: isDark ? '#2A2A2A' : '#FFFFFF',
     editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
     editHintBorder: isDark ? '#444' : '#FFE0B2',
-    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    dialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBg: isDark ? '#333' : '#FFFFFF',
     inputBorder: isDark ? '#444' : '#D0D0D5',
     overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
   };
@@ -177,7 +177,7 @@ export default function PortalScreen() {
         </View>
         <View style={styles.headerRight}>
           <Pressable
-            style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle }, editMode && { backgroundColor: theme.toggleActive }, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle, borderColor: theme.border }, pressed && { opacity: 0.7 }]}
             onPress={() => setEditMode(!editMode)}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -423,6 +423,7 @@ const styles = StyleSheet.create({
   editToggle: {
     padding: Spacing.one + Spacing.half,
     borderRadius: 8,
+    borderWidth: 1,
   },
   editHint: {
     paddingVertical: Spacing.one,

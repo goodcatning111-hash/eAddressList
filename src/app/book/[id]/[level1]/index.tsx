@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -133,6 +133,248 @@ function ContactReorderView({ bookId, level1Dir, groups, onSaved, theme }: { boo
   );
 }
 
+// ---------------------------------------------------------------------------
+// Accordion sticky view — manual floating header via onLayout + absolute overlay
+//
+// Why manual instead of stickyHeaderIndices / stickySectionHeadersEnabled?
+//   1. RN's built-in sticky headers clone the view to a separate layer,
+//      which breaks Pressable touch events (well-known RN bug).
+//   2. Collapsed sections should NOT stick — built-in APIs can't distinguish.
+//   3. Rounded corners leak content behind the sticky clone.
+//
+// Production pattern: track header Y positions via onLayout (fired once
+// after render, not during scroll — cheap), then on scroll compare
+// scrollY against pre-captured positions to show/hide a perfectly
+// positioned floating header overlay rendered OUTSIDE the ScrollView.
+// ---------------------------------------------------------------------------
+
+type StickyItem =
+  | { type: 'header'; key: string; group: Level2Group }
+  | { type: 'contact'; key: string; contact: Contact; group: Level2Group }
+  | { type: 'footer'; key: string; group: Level2Group };
+
+function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onToggleExpand, theme }: {
+  groups: Level2Group[];
+  bookId: number;
+  level1Dir: string;
+  expandedGroups: Set<string>;
+  onToggleExpand: (dir: string) => void;
+  theme: Record<string, string>;
+}) {
+  const { isDark } = useTheme();
+  const router = useRouter();
+
+  // ── captured layout positions ──────────────────────────────────────
+  // key = dirName → { headerTop, headerH, footerBottom } in scroll-content coords
+  const layouts = useRef(new Map<string, { headerTop: number; headerH: number; footerBottom: number }>());
+  const scrollY = useRef(0);
+  const [floatingDir, setFloatingDir] = useState<string | null>(null);
+
+  // ── flat items (rebuilt on expand/collapse) ────────────────────────
+  const flatItems: StickyItem[] = useMemo(() => {
+    const items: StickyItem[] = [];
+    for (const g of groups) {
+      const isExpanded = expandedGroups.has(g.level2Dir);
+      items.push({ type: 'header', key: `h-${g.level2Dir}`, group: g });
+      if (isExpanded) {
+        for (const c of g.contacts) {
+          items.push({ type: 'contact', key: `c-${c.id}`, contact: c, group: g });
+        }
+        items.push({ type: 'footer', key: `f-${g.level2Dir}`, group: g });
+      }
+    }
+    return items;
+  }, [groups, expandedGroups]);
+
+  // scroll ref for manual position correction on collapse
+  const scrollRef = useRef<ScrollView>(null);
+
+  // ── determine which header (if any) should float ───────────────────
+  const recomputeFloating = useCallback((y: number) => {
+    scrollY.current = y;
+    let best: string | null = null;
+
+    for (const g of groups) {
+      if (!expandedGroups.has(g.level2Dir)) continue;
+      const lo = layouts.current.get(g.level2Dir);
+      if (!lo) continue;
+      // Strict `<` so header at y=0 doesn't float immediately.
+      // `+ 2` threshold prevents flicker when the real header is
+      // barely touching the edge.
+      if (lo.headerTop + 2 < y && lo.footerBottom > y) {
+        best = g.level2Dir;
+        break;
+      }
+    }
+
+    setFloatingDir(prev => (prev !== best ? best : prev));
+  }, [groups, expandedGroups]);
+
+  // ── on expand/collapse, re-measure then correct scroll position ────
+  // Track which dirName was last toggled so we can scroll-stabilise
+  const lastToggled = useRef<string | null>(null);
+  const wrappedToggle = useCallback((dir: string) => {
+    lastToggled.current = dir;
+    onToggleExpand(dir);
+  }, [onToggleExpand]);
+
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      recomputeFloating(scrollY.current);
+
+      // After collapse, scroll to keep the toggled header at its natural position
+      const dir = lastToggled.current;
+      if (dir && !expandedGroups.has(dir)) {
+        // Section was just collapsed — scroll back to its header if needed
+        const lo = layouts.current.get(dir);
+        if (lo && scrollY.current > lo.headerTop) {
+          scrollRef.current?.scrollTo({ y: lo.headerTop, animated: false });
+          recomputeFloating(lo.headerTop);
+        }
+      }
+      lastToggled.current = null;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [flatItems]);
+
+  // ── header render helper ───────────────────────────────────────────
+  const renderHeader = (group: Level2Group, isStickyOverlay: boolean) => {
+    const color = getMorrisColorForTheme(
+      group.colorIndex >= 0 ? group.colorIndex : hashIndex(group.level2Dir, MorrisColors.length),
+      isDark,
+    );
+    const isExpanded = expandedGroups.has(group.level2Dir);
+    return (
+      <View
+        style={{
+          backgroundColor: color.bg,
+          paddingVertical: Spacing.three,
+          paddingHorizontal: Spacing.four,
+          // Sticky overlay: no margins, no bottom corners, plus shadow
+          ...(isStickyOverlay
+            ? {
+                marginBottom: 0,
+                borderBottomStartRadius: 0,
+                borderBottomEndRadius: 0,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.12,
+                shadowRadius: 3,
+                elevation: 3,
+              }
+            : isExpanded
+              ? {
+                  borderTopStartRadius: 12,
+                  borderTopEndRadius: 12,
+                  marginBottom: 0,
+                }
+              : {
+                  borderRadius: 12,
+                  marginBottom: Spacing.three,
+                }),
+        }}
+      >
+        <Pressable onPress={() => wrappedToggle(group.level2Dir)}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', flex: 1, marginRight: Spacing.two, minWidth: 0 }}>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: color.fg, flexShrink: 1 }} numberOfLines={1}>{group.level2Dir}</Text>
+              <Text style={{ fontSize: 14, opacity: 0.7, color: color.fg, marginLeft: Spacing.one }}>({group.contacts.length})</Text>
+            </View>
+            <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={18} color={color.fg} />
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
+
+  // ── floating header data ───────────────────────────────────────────
+  const floatingGroup = floatingDir ? groups.find(g => g.level2Dir === floatingDir) : undefined;
+
+  // ── render ─────────────────────────────────────────────────────────
+  return (
+    <View style={{ flex: 1 }}>
+      {/* FLOATING OVERLAY — rendered OUTSIDE ScrollView, normal touch handling */}
+      {floatingGroup && expandedGroups.has(floatingGroup.level2Dir) && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, paddingHorizontal: Spacing.four }}>
+          {renderHeader(floatingGroup, true)}
+        </View>
+      )}
+
+      {/* MAIN SCROLL CONTENT */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.body}
+        bounces
+        alwaysBounceVertical
+        scrollEventThrottle={16}
+        onScroll={e => recomputeFloating(e.nativeEvent.contentOffset.y)}
+      >
+        {flatItems.map(item => {
+          if (item.type === 'header') {
+            return (
+              <View
+                key={item.key}
+                onLayout={e => {
+                  const { y, height } = e.nativeEvent.layout;
+                  const prev = layouts.current.get(item.group.level2Dir) ?? { headerTop: 0, headerH: 0, footerBottom: 0 };
+                  layouts.current.set(item.group.level2Dir, { ...prev, headerTop: y, headerH: height });
+                }}
+              >
+                {renderHeader(item.group, false)}
+              </View>
+            );
+          }
+          if (item.type === 'contact') {
+            const color = getMorrisColorForTheme(
+              item.group.colorIndex >= 0 ? item.group.colorIndex : hashIndex(item.group.level2Dir, MorrisColors.length),
+              isDark,
+            );
+            return (
+              <View key={item.key} style={{ backgroundColor: color.bg, paddingHorizontal: Spacing.two }}>
+                <ContactRow
+                  contact={item.contact}
+                  onPress={() => router.push(`/book/${bookId}/contact/${item.contact.id}`)}
+                  backgroundColor={getContactBg(color.bg, isDark)}
+                />
+              </View>
+            );
+          }
+          // footer
+          const fColor = getMorrisColorForTheme(
+            item.group.colorIndex >= 0 ? item.group.colorIndex : hashIndex(item.group.level2Dir, MorrisColors.length),
+            isDark,
+          );
+          return (
+            <View
+              key={item.key}
+              onLayout={e => {
+                const { y, height } = e.nativeEvent.layout;
+                const prev = layouts.current.get(item.group.level2Dir) ?? { headerTop: 0, headerH: 0, footerBottom: 0 };
+                layouts.current.set(item.group.level2Dir, { ...prev, footerBottom: y + height });
+              }}
+              style={{ backgroundColor: fColor.bg, borderBottomStartRadius: 12, borderBottomEndRadius: 12, paddingBottom: Spacing.one, marginBottom: Spacing.three }}
+            >
+              <Pressable
+                style={[styles.addContactBtn, { borderTopColor: theme.border }]}
+                onPress={() =>
+                  router.push(`/book/${bookId}/contact/new?l1=${encodeURIComponent(level1Dir)}&l2=${encodeURIComponent(item.group.level2Dir)}`)
+                }
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Icon name="add" size={15} color="#208AEF" />
+                  <Text style={{ fontSize: 15, color: '#208AEF' }}> 新增联系人</Text>
+                </View>
+              </Pressable>
+            </View>
+          );
+        })}
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </View>
+  );
+}
+
 /** 页面 3：二级目录手风琴 + 联系人列表 — 支持编辑模式 */
 export default function Level2Screen() {
   const router = useRouter();
@@ -161,21 +403,20 @@ export default function Level2Screen() {
   // Dark mode theme colours
   const theme = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    toggle: isDark ? '#333' : '#F0F0F3',
-    toggleActive: isDark ? '#443322' : '#FFE5CC',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
+    toggle: isDark ? '#383838' : '#F0F0F3',
     textSecondary: isDark ? '#AAA' : '#808080',
     textPrimary: isDark ? '#E0E0E0' : '#000000',
-    border: isDark ? '#333' : '#E0E0E0',
+    border: isDark ? '#3A3A3A' : '#E0E0E0',
     editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
     editHintBorder: isDark ? '#444' : '#FFE0B2',
-    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    dialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBg: isDark ? '#333' : '#FFFFFF',
     inputBorder: isDark ? '#444' : '#D0D0D5',
-    toolBtnBg: isDark ? '#333' : '#FFFFFF',
-    toolBtnBorder: isDark ? '#444' : '#E0E0E5',
-    menuBtnBg: isDark ? '#333' : '#F0F0F3',
-    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    toolBtnBg: isDark ? '#383838' : '#FFFFFF',
+    toolBtnBorder: isDark ? '#3A3A3A' : '#E0E0E5',
+    menuBtnBg: isDark ? '#383838' : '#F0F0F3',
+    menuDialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
     overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
   };
 
@@ -285,7 +526,7 @@ export default function Level2Screen() {
       {/* 工具栏 */}
       <View style={styles.toolbar}>
         <Pressable
-          style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle }, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle, borderColor: theme.border }, pressed && { opacity: 0.7 }]}
           onPress={async () => {
             if (!editMode) {
               await directoryDao.syncAllDirOrders(bookId);
@@ -302,12 +543,12 @@ export default function Level2Screen() {
         </Pressable>
         {editMode && (
           <Pressable
-            style={({ pressed }) => [styles.editToggle, contactReorderMode && { backgroundColor: theme.toggleActive }, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle, borderColor: theme.border }, pressed && { opacity: 0.7 }]}
             onPress={() => setContactReorderMode(!contactReorderMode)}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Icon name={contactReorderMode ? 'business' : 'people'} size={14} />
-              <Text style={{ fontSize: 14, color: theme.textPrimary }}>{contactReorderMode ? ' 部门排序' : ' 联系人排序'}</Text>
+              <Text style={{ fontSize: 14, color: theme.textPrimary }}>{contactReorderMode ? ' 组织排序' : ' 联系人排序'}</Text>
             </View>
           </Pressable>
         )}
@@ -421,52 +662,14 @@ export default function Level2Screen() {
           <View style={{ height: 24 }} />
         </View>
       ) : (
-        <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
-          {groups.map((group) => {
-            const color = getMorrisColorForTheme(
-              group.colorIndex >= 0 ? group.colorIndex : hashIndex(group.level2Dir, MorrisColors.length),
-              isDark
-            );
-            return (
-              <View key={group.level2Dir} style={styles.dirRow}>
-                <AccordionSection
-                  title={group.level2Dir}
-                  count={group.contacts.length}
-                  bgColor={color.bg}
-                  fgColor={color.fg}
-                  containerStyle={{ marginBottom: 0 }}
-                  footer={
-                    <Pressable
-                      style={[styles.addContactBtn, { borderTopColor: theme.border }]}
-                      onPress={() =>
-                        router.push(
-                          `/book/${bookId}/contact/new?l1=${encodeURIComponent(level1Dir)}&l2=${encodeURIComponent(group.level2Dir)}`,
-                        )
-                      }
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Icon name="add" size={15} color="#208AEF" />
-                        <Text style={{ fontSize: 15, color: '#208AEF' }}> 新增联系人</Text>
-                      </View>
-                    </Pressable>
-                  }
-                >
-                  {group.contacts.map((contact) => (
-                    <ContactRow
-                      key={contact.id}
-                      contact={contact}
-                      onPress={() =>
-                        router.push(`/book/${bookId}/contact/${contact.id}`)
-                      }
-                      backgroundColor={getContactBg(color.bg, isDark)}
-                    />
-                  ))}
-                </AccordionSection>
-              </View>
-            );
-          })}
-          <View style={{ height: 24 }} />
-        </ScrollView>
+        <AccordionStickyView
+          groups={groups}
+          bookId={bookId}
+          level1Dir={level1Dir}
+          expandedGroups={expandedGroups}
+          onToggleExpand={(dir) => setExpandedGroups(prev => { const next = new Set(prev); if (next.has(dir)) next.delete(dir); else next.add(dir); return next; })}
+          theme={theme}
+        />
       )}
 
       {/* 新建菜单弹窗 */}
@@ -572,6 +775,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: 8,
+    borderWidth: 1,
   },
   editHint: {
     paddingVertical: Spacing.one,

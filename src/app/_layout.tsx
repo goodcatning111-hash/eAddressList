@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, Pressable, useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider as ExpoThemeProvider, DefaultTheme, DarkTheme } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ThemeProvider, useTheme } from '@/contexts/theme';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
@@ -14,7 +15,7 @@ function InnerLayout() {
   const { isDark } = useTheme();
   return (
     <ExpoThemeProvider value={isDark ? NavDarkTheme : NavLightTheme}>
-      <Stack screenOptions={{ animation: 'slide_from_right', contentStyle: { backgroundColor: isDark ? '#121212' : '#F5F5F7' } }}>
+      <Stack screenOptions={({ navigation }) => ({ animation: 'slide_from_right', contentStyle: { backgroundColor: isDark ? '#121212' : '#F5F5F7' }, headerLeft: ({ canGoBack, tintColor }) => canGoBack ? <Pressable onPress={() => navigation.goBack()} style={{ marginLeft: Platform.OS === 'ios' ? -8 : 0 }}><MaterialIcons name="chevron-left" size={28} color={tintColor} /></Pressable> : undefined })}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="book/[id]/index" options={{ title: '通讯簿', headerBackTitle: '返回' }} />
         <Stack.Screen name="book/[id]/[level1]/index" options={{ title: '', headerBackTitle: '返回' }} />

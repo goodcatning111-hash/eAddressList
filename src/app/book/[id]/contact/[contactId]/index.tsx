@@ -29,7 +29,7 @@ export default function ContactDetailScreen() {
 
   const theme = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
     textPrimary: isDark ? '#E0E0E0' : '#000',
     textSecondary: isDark ? '#AAA' : '#808080',
     border: isDark ? '#444' : '#E0E0E0',

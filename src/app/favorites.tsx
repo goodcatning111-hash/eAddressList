@@ -25,7 +25,7 @@ export default function FavoritesScreen() {
 
   const theme = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
     textSecondary: isDark ? '#AAA' : '#808080',
     textTertiary: isDark ? '#888' : '#A0A0A0',
     textPrimary: isDark ? '#E0E0E0' : '#000',

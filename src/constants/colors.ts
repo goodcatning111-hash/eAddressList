@@ -1,15 +1,15 @@
-/** Morris 柔和色板 */
+/** Morris 柔和色板 — 深色变体比卡片稍亮以形成层次 */
 export const MorrisColors = [
-  { name: 'Sand', bg: '#F5E6D3', fg: '#8B6914', darkBg: '#3D362D', darkFg: '#D4B872' },
-  { name: 'Sage', bg: '#D4E8D0', fg: '#2D5A27', darkBg: '#2D3A2C', darkFg: '#8CB87A' },
-  { name: 'Sky', bg: '#D6E4F0', fg: '#1A4B7A', darkBg: '#1E2F3D', darkFg: '#7AA8CC' },
-  { name: 'Mauve', bg: '#E8D5E0', fg: '#6B3A5A', darkBg: '#3D2E37', darkFg: '#C48AAA' },
-  { name: 'Apricot', bg: '#F0D8C8', fg: '#8B4513', darkBg: '#3D302A', darkFg: '#CC8B55' },
-  { name: 'Moss', bg: '#D5E8D4', fg: '#3D6B35', darkBg: '#2B3528', darkFg: '#7AAA6A' },
-  { name: 'Lavender', bg: '#E0D5F0', fg: '#4A2D70', darkBg: '#2E2A3D', darkFg: '#A080CC' },
-  { name: 'Rose', bg: '#F0D5D5', fg: '#8B3A3A', darkBg: '#3D2C2C', darkFg: '#CC7070' },
-  { name: 'Teal', bg: '#D0E8E8', fg: '#1A6B6B', darkBg: '#253838', darkFg: '#5AAAAA' },
-  { name: 'Peach', bg: '#F5E0D0', fg: '#8B5A3A', darkBg: '#3D322A', darkFg: '#CC9966' },
+  { name: 'Sand', bg: '#F5E6D3', fg: '#8B6914', darkBg: '#4A4238', darkFg: '#E0C98A' },
+  { name: 'Sage', bg: '#D4E8D0', fg: '#2D5A27', darkBg: '#3D4B3B', darkFg: '#98C88A' },
+  { name: 'Sky', bg: '#D6E4F0', fg: '#1A4B7A', darkBg: '#2E3F4D', darkFg: '#8CB8DC' },
+  { name: 'Mauve', bg: '#E8D5E0', fg: '#6B3A5A', darkBg: '#4D3A44', darkFg: '#D49CBB' },
+  { name: 'Apricot', bg: '#F0D8C8', fg: '#8B4513', darkBg: '#4D4037', darkFg: '#DC9B66' },
+  { name: 'Moss', bg: '#D5E8D4', fg: '#3D6B35', darkBg: '#3B4A38', darkFg: '#8CBA7A' },
+  { name: 'Lavender', bg: '#E0D5F0', fg: '#4A2D70', darkBg: '#3E3A4D', darkFg: '#B090DC' },
+  { name: 'Rose', bg: '#F0D5D5', fg: '#8B3A3A', darkBg: '#4D3C3C', darkFg: '#DC8080' },
+  { name: 'Teal', bg: '#D0E8E8', fg: '#1A6B6B', darkBg: '#344848', darkFg: '#6ABABA' },
+  { name: 'Peach', bg: '#F5E0D0', fg: '#8B5A3A', darkBg: '#4D4237', darkFg: '#DCA677' },
 ];
 
 /** 根据索引获取色板颜色 */
@@ -39,7 +39,7 @@ export function lightenColor(hex: string, amount = 0.35): string {
 }
 
 /** 深色模式下微调背景形成层次 */
-function darkenContactBg(hex: string, amount = 0.08): string {
+function darkenContactBg(hex: string, amount = 0.12): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);

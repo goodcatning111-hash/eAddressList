@@ -46,22 +46,21 @@ export default function Level1Screen() {
   // Dark mode theme colours
   const theme = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    toggle: isDark ? '#333' : '#F0F0F3',
-    toggleActive: isDark ? '#443322' : '#FFE5CC',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
+    toggle: isDark ? '#383838' : '#F0F0F3',
     textSecondary: isDark ? '#AAA' : '#808080',
     textPrimary: isDark ? '#E0E0E0' : '#000000',
-    border: isDark ? '#333' : '#E0E0E0',
+    border: isDark ? '#3A3A3A' : '#E0E0E0',
     editHintBg: isDark ? '#2A2A2A' : '#FFF8E1',
     editHintBorder: isDark ? '#444' : '#FFE0B2',
-    dialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    inputBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    dialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    inputBg: isDark ? '#333' : '#FFFFFF',
     inputBorder: isDark ? '#444' : '#D0D0D5',
     toolbarBg: isDark ? '#121212' : '#F5F5F7',
-    toolBtnBg: isDark ? '#333' : '#FFFFFF',
-    toolBtnBorder: isDark ? '#444' : '#E0E0E5',
-    menuBtnBg: isDark ? '#333' : '#F0F0F3',
-    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    toolBtnBg: isDark ? '#383838' : '#FFFFFF',
+    toolBtnBorder: isDark ? '#3A3A3A' : '#E0E0E5',
+    menuBtnBg: isDark ? '#383838' : '#F0F0F3',
+    menuDialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
     bookName: isDark ? '#AAA' : '#505050',
     overlayBg: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
   };
@@ -175,7 +174,7 @@ export default function Level1Screen() {
       {/* 工具栏 */}
       <View style={styles.toolbar}>
         <Pressable
-          style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle }, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.editToggle, { backgroundColor: theme.toggle, borderColor: theme.border }, pressed && { opacity: 0.7 }]}
           onPress={async () => {
             if (!editMode) await directoryDao.syncAllDirOrders(bookId);
             setEditMode(!editMode);
@@ -388,6 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: 8,
+    borderWidth: 1,
   },
   editHint: {
     paddingVertical: Spacing.one,

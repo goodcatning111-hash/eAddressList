@@ -46,19 +46,19 @@ export default function SettingsScreen() {
   // Dark mode theme colours
   const t = {
     screen: isDark ? '#121212' : '#F5F5F7',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    toggle: isDark ? '#333' : '#F0F0F3',
+    card: isDark ? '#2A2A2A' : '#FFFFFF',
+    toggle: isDark ? '#383838' : '#F0F0F3',
     textSecondary: isDark ? '#AAA' : '#808080',
     textTertiary: isDark ? '#888' : '#A0A0A0',
     textPrimary: isDark ? '#E0E0E0' : '#000000',
-    border: isDark ? '#333' : '#E0E0E0',
-    slotPanelBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    slotRowBorder: isDark ? '#444' : '#E0E0E5',
-    slotFilledBg: isDark ? '#1A2A3A' : '#F0F7FF',
-    rowBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    menuDialogBg: isDark ? '#1E1E1E' : '#FFFFFF',
-    menuBtnBg: isDark ? '#333' : '#F0F0F3',
-    aboutBg: isDark ? '#1E1E1E' : '#FFFFFF',
+    border: isDark ? '#3A3A3A' : '#E0E0E0',
+    slotPanelBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    slotRowBorder: isDark ? '#3A3A3A' : '#E0E0E5',
+    slotFilledBg: isDark ? '#152535' : '#F0F7FF',
+    rowBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    menuDialogBg: isDark ? '#2A2A2A' : '#FFFFFF',
+    menuBtnBg: isDark ? '#383838' : '#F0F0F3',
+    aboutBg: isDark ? '#2A2A2A' : '#FFFFFF',
     warnBg: isDark ? '#332A00' : '#FFF3CD',
     warnText: isDark ? '#FFD700' : '#856404',
     slotRowSummary: isDark ? '#AAA' : '#808080',
@@ -323,34 +323,6 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={[styles.screen, { backgroundColor: t.screen }]} bounces={true} alwaysBounceVertical={true}>
-      {/* ── 外观 ── */}
-      <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>外观</Text>
-      <View style={[styles.themeRow, { backgroundColor: t.card, borderBottomColor: t.border }]}>
-        <Text style={[styles.rowTitle, { color: t.textPrimary }]}>主题模式</Text>
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
-            const active = mode === m;
-            const iconName = m === 'light' ? 'light-mode' as const : m === 'dark' ? 'dark-mode' as const : 'phone-android' as const;
-            const label = m === 'light' ? ' 浅色' : m === 'dark' ? ' 深色' : ' 跟随系统';
-            return (
-              <Pressable
-                key={m}
-                onPress={() => setMode(m)}
-                style={({ pressed }) => [
-                  { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? '#208AEF' : t.toggle },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Icon name={iconName} size={18} color={active ? '#FFF' : t.textTertiary} />
-                  <Text style={{ fontSize: 13, color: active ? '#FFF' : t.textTertiary }}>{label}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
       {/* ── 数据管理 ── */}
       <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>数据管理</Text>
 
@@ -422,6 +394,34 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+
+      {/* ── 外观 ── */}
+      <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>外观</Text>
+      <View style={[styles.themeRow, { backgroundColor: t.card, borderBottomColor: t.border }]}>
+        <Text style={[styles.rowTitle, { color: t.textPrimary }]}>主题模式</Text>
+        <View style={{ flexDirection: 'row', gap: 4 }}>
+          {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
+            const active = mode === m;
+            const iconName = m === 'light' ? 'light-mode' as const : m === 'dark' ? 'dark-mode' as const : 'phone-android' as const;
+            const label = m === 'light' ? ' 浅色' : m === 'dark' ? ' 深色' : ' 跟随系统';
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setMode(m)}
+                style={({ pressed }) => [
+                  { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: active ? '#208AEF' : t.toggle },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Icon name={iconName} size={18} color={active ? '#FFF' : t.textTertiary} />
+                  <Text style={{ fontSize: 13, color: active ? '#FFF' : t.textTertiary }}>{label}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>关于</Text>
       <View style={[styles.aboutRow, { backgroundColor: t.aboutBg, borderBottomColor: t.border }]}>
