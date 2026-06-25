@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Icon } from '@/components/icon';
+import { useAlert } from '@/components/ui/alert-dialog';
 import { importFile, exportJSON, shareTemplate, exportExcel } from '@/utils/import-export';
 import {
   getAllSlots,
@@ -32,6 +33,7 @@ import type { AddressBook } from '@/db/types';
 
 export default function SettingsScreen() {
   const { mode, setMode, isDark } = useTheme();
+  const alert = useAlert();
   const [loading, setLoading] = useState(false);
   const [books, setBooks] = useState<AddressBook[]>([]);
   const [slots, setSlots] = useState<SaveSlotMeta[]>([]);
@@ -43,6 +45,9 @@ export default function SettingsScreen() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [bookBreakdown, setBookBreakdown] = useState<string[]>([]);
   const [hasOrphans, setHasOrphans] = useState(false);
+  const [showImportPicker, setShowImportPicker] = useState(false);
+  const [importPickerPage, setImportPickerPage] = useState(0);
+  const PAGE_SIZE = 6;
 
   // Dark mode theme colours
   const t = {
@@ -82,7 +87,7 @@ export default function SettingsScreen() {
         if (dup > 0) parts.push(`重复 ${dup} 条`);
         if (orphan.placeholders > 0) parts.push(`占位 ${orphan.placeholders} 条`);
         if (orphan.orphans > 0) parts.push(`多余 ${orphan.orphans} 条`);
-        Alert.alert('已自动清理', `移除 ${total} 条数据（${parts.join(' · ')}）`);
+        alert.showAlert({ title: '已自动清理', message: `移除 ${total} 条数据（${parts.join(' · ')}）` });
       }
     } catch { /* 静默忽略 */ }
   };
@@ -114,39 +119,26 @@ export default function SettingsScreen() {
 
   // ── 导入 ──────────────────────────────────────────────
 
+  const doImport = async (bookId?: number) => {
+    setLoading(true);
+    try {
+      const count = await importFile(bookId);
+      setLoading(false);
+      if (count > 0) {
+        const targetName = bookId != null ? books.find(b => b.id === bookId)?.name ?? '' : '';
+        alert.showAlert({ title: '导入成功', message: targetName ? `已导入 ${count} 个联系人到「${targetName}」` : `已导入 ${count} 个联系人` });
+        await loadData(); await runAutoCleanup();
+      }
+    } catch { setLoading(false); }
+  };
+
   const handleImport = async () => {
-    const currentBooks = await addressBookDao.getAll();
-    if (currentBooks.length === 0) {
-      setLoading(true);
-      try {
-        const count = await importFile();
-        setLoading(false);
-        if (count > 0) { Alert.alert('导入成功', `已导入 ${count} 个联系人`); await loadData(); await runAutoCleanup(); }
-      } catch { setLoading(false); }
-      return;
-    }
-    if (currentBooks.length === 1) {
-      setLoading(true);
-      try {
-        const count = await importFile(currentBooks[0].id);
-        setLoading(false);
-        if (count > 0) { Alert.alert('导入成功', `已导入 ${count} 个联系人到「${currentBooks[0].name}」`); await loadData(); await runAutoCleanup(); }
-      } catch { setLoading(false); }
-      return;
-    }
-    const bookOptions: any[] = currentBooks.map((b) => ({
-      text: `${b.name} (${b.contactCount}人)`,
-      onPress: async () => {
-        setLoading(true);
-        try {
-          const count = await importFile(b.id);
-          setLoading(false);
-          if (count > 0) { Alert.alert('导入成功', `已导入 ${count} 个联系人到「${b.name}」`); await loadData(); await runAutoCleanup(); }
-        } catch { setLoading(false); }
-      },
-    }));
-    bookOptions.push({ text: '取消', style: 'cancel' });
-    Alert.alert('选择导入目标', '请选择要将数据导入到哪个通讯簿：', bookOptions);
+    const list = await addressBookDao.getAll();
+    setBooks(list);
+    if (list.length === 0) { doImport(); return; }
+    if (list.length === 1) { doImport(list[0].id); return; }
+    setImportPickerPage(0);
+    setShowImportPicker(true);
   };
 
   // ── 存档 ──────────────────────────────────────────────
@@ -158,7 +150,7 @@ export default function SettingsScreen() {
         const data = await exportFullData();
         await saveSlot(index, data);
         setLoading(false);
-        Alert.alert('存档成功', `已保存到存档位 ${index + 1}`);
+        alert.showAlert({ title: '存档成功', message: `已保存到存档位 ${index + 1}` });
         await loadData();
       } catch (err) {
         setLoading(false);
@@ -167,14 +159,14 @@ export default function SettingsScreen() {
     };
 
     if (meta.hasData) {
-      Alert.alert(
-        '覆盖存档',
-        `存档位 ${index + 1} 已有数据（${meta.summary}）。\n是否覆盖？此操作不可撤销。`,
-        [
+      alert.showAlert({
+        title: '覆盖存档',
+        message: `存档位 ${index + 1} 已有数据（${meta.summary}）。\n是否覆盖？此操作不可撤销。`,
+        buttons: [
           { text: '取消', style: 'cancel' },
           { text: '覆盖', style: 'destructive', onPress: doSave },
         ],
-      );
+      });
     } else {
       doSave();
     }
@@ -185,52 +177,44 @@ export default function SettingsScreen() {
   const handleLoad = (index: number, meta: SaveSlotMeta) => {
     if (!meta.hasData) return;
 
-    Alert.alert(
-      '读取存档',
-      `确定要加载存档位 ${index + 1} 吗？\n\n${meta.summary}\n存档时间：${new Date(meta.savedAt).toLocaleString()}\n\n⚠ 当前数据将被完全替换，此操作不可撤销。`,
-      [
+    alert.showAlert({
+      title: '读取存档',
+      message: `确定要加载存档位 ${index + 1} 吗？\n\n${meta.summary}\n存档时间：${new Date(meta.savedAt).toLocaleString()}\n\n⚠ 当前数据将被完全替换，此操作不可撤销。`,
+      buttons: [
         { text: '取消', style: 'cancel' },
         {
-          text: '确认读取',
-          style: 'destructive',
+          text: '确认读取', style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
               const data = await loadSlot(index);
               await importFullData(data);
               setLoading(false);
-              Alert.alert('读档成功', '数据已恢复，请返回首页查看');
+              alert.showAlert({ title: '读档成功', message: '数据已恢复，请返回首页查看' });
               await loadData();
             } catch (err) {
               setLoading(false);
               console.error('读档失败:', err);
-              Alert.alert('读档失败', '存档文件可能已损坏');
+              alert.showAlert({ title: '读档失败', message: '存档文件可能已损坏' });
             }
           },
         },
       ],
-    );
+    });
   };
 
   // ── 删除存档 ──────────────────────────────────────────
 
   const handleDeleteSlot = (index: number, meta: SaveSlotMeta) => {
     if (!meta.hasData) return;
-    Alert.alert(
-      '删除存档',
-      `确定要删除存档位 ${index + 1} 的数据吗？`,
-      [
+    alert.showAlert({
+      title: '删除存档',
+      message: `确定要删除存档位 ${index + 1} 的数据吗？`,
+      buttons: [
         { text: '取消', style: 'cancel' },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteSlot(index);
-            await loadData();
-          },
-        },
+        { text: '删除', style: 'destructive', onPress: async () => { await deleteSlot(index); await loadData(); } },
       ],
-    );
+    });
   };
 
   // ── 导出 ──────────────────────────────────────────────
@@ -274,16 +258,16 @@ export default function SettingsScreen() {
   // ── 清理 ──────────────────────────────────────────────
 
   const handleCleanup = () => {
-    Alert.alert(
-      '清理数据',
-      '将执行两项操作：\n'
+    alert.showAlert({
+      title: '清理数据',
+      message: '将执行两项操作：\n'
         + '1. 合并同姓名、同目录的重复联系人（保留最新）\n'
         + '2. 删除占位联系人「（待添加）」及多余数据\n\n'
         + '此操作不可撤销，确定继续？',
-      [
+      buttons: [
         { text: '取消', style: 'cancel' },
         {
-          text: '确定清理',
+          text: '确定清理', style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
@@ -298,9 +282,9 @@ export default function SettingsScreen() {
                 if (dupRemoved > 0) parts.push(`重复：${dupRemoved} 条`);
                 if (orphanResult.placeholders > 0) parts.push(`占位：${orphanResult.placeholders} 条`);
                 if (orphanResult.orphans > 0) parts.push(`多余：${orphanResult.orphans} 条`);
-                Alert.alert('清理完成', `已移除 ${total} 条数据\n（${parts.join(' · ')}）`);
+                alert.showAlert({ title: '清理完成', message: `已移除 ${total} 条数据\n（${parts.join(' · ')}）` });
               } else {
-                Alert.alert('无需清理', '未发现重复或冗余数据');
+                alert.showAlert({ title: '无需清理', message: '未发现重复或冗余数据' });
               }
               await loadData();
             } catch (err) {
@@ -310,7 +294,7 @@ export default function SettingsScreen() {
           },
         },
       ],
-    );
+    });
   };
 
   // ── Loading ───────────────────────────────────────────
@@ -410,6 +394,63 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+
+      {/* ── 导入通讯簿选择器 ── */}
+      {showImportPicker && (() => {
+        const totalPages = Math.ceil(books.length / PAGE_SIZE);
+        const pageBooks = books.slice(importPickerPage * PAGE_SIZE, (importPickerPage + 1) * PAGE_SIZE);
+        return (
+          <View style={[styles.overlayCenter, { backgroundColor: t.overlayBg }]}>
+            <View style={[styles.menuDialog, { backgroundColor: t.menuDialogBg }]}>
+              <Text style={[styles.dialogTitle, { color: t.textPrimary }]}>选择导入目标</Text>
+              <Text style={{ fontSize: 13, color: t.textSecondary, marginBottom: Spacing.three, textAlign: 'center' }}>
+                第 {importPickerPage + 1}/{totalPages} 页
+              </Text>
+              <View style={styles.menuGroup}>
+                {pageBooks.map((b) => (
+                  <Pressable
+                    key={b.id}
+                    style={({ pressed }) => [styles.menuBtn, { backgroundColor: t.menuBtnBg }, pressed && { opacity: 0.6 }]}
+                    onPress={() => { setShowImportPicker(false); doImport(b.id); }}
+                  >
+                    <Text style={[styles.menuBtnText, { color: t.textPrimary }]}>
+                      {b.name}（{b.contactCount} 人）
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.dialogActions}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.dialogCancel, { paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+                    importPickerPage === 0 && { opacity: 0.3 },
+                    pressed && importPickerPage > 0 && { opacity: 0.6 },
+                  ]}
+                  onPress={() => { if (importPickerPage > 0) setImportPickerPage(importPickerPage - 1); }}
+                >
+                  <Text style={{ fontSize: 16, color: importPickerPage === 0 ? t.textTertiary : '#208AEF' }}>上一页</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.dialogCancel, { paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+                    importPickerPage >= totalPages - 1 && { opacity: 0.3 },
+                    pressed && importPickerPage < totalPages - 1 && { opacity: 0.6 },
+                  ]}
+                  onPress={() => { if (importPickerPage < totalPages - 1) setImportPickerPage(importPickerPage + 1); }}
+                >
+                  <Text style={{ fontSize: 16, color: importPickerPage >= totalPages - 1 ? t.textTertiary : '#208AEF' }}>下一页</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.dialogCancel, pressed && { opacity: 0.6 }]}
+                  onPress={() => setShowImportPicker(false)}
+                >
+                  <Text style={{ fontSize: 16, color: t.textSecondary }}>取消</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* ── 外观 ── */}
       <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>外观</Text>
@@ -669,31 +710,29 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  // slot overlay
+  // dialog overlays — all centered, shifted up to compensate for header
   overlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent: 'flex-end',
-    zIndex: 10,
+    justifyContent: 'center', alignItems: 'center',
+    paddingBottom: 56, zIndex: 10,
   },
   overlayCenter: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'center', alignItems: 'center',
+    paddingBottom: 56, zIndex: 10,
   },
   dialogTitle: { fontSize: 18, fontWeight: '700', marginBottom: Spacing.four, textAlign: 'center' },
   slotPanel: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: 40,
+    borderRadius: 16,
+    padding: Spacing.four,
+    width: '90%',
+    maxWidth: 380,
     maxHeight: '80%',
   },
   slotPanelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Spacing.four,
     paddingBottom: Spacing.two,
   },
   slotPanelTitle: { fontSize: 18, fontWeight: '700' },

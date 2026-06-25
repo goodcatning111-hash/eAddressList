@@ -1,6 +1,6 @@
 # eAddressList API & 函数参考文档
 
-> 最后更新：2026-06-25
+> 最后更新：2026-07-01
 
 ## 数据库层 (`src/db/`)
 
@@ -222,10 +222,31 @@ const haptic = useHapticScale();
 ### `shareTemplate(): Promise<void>`
 用 `xlsx` 库生成模板文件（表头 + 一行示例），分享下载。
 
-### `exportExcel(): Promise<void>`
-导出全部联系人为 Excel 文件（与导入模板格式一致：一级目录、二级目录、姓名、职务、办公电话、手机号），使用系统分享。
+### `exportExcel(bookIds?: number[]): Promise<void>`
+导出联系人为 Excel 文件（与导入模板格式一致）。可选 `bookIds` 按通讯簿筛选；不传则导出全部。使用系统分享。
 
 ### 自动清理
+导入/删除通讯簿、目录后自动执行 `cleanupDuplicates()` + `cleanupOrphans()`，有结果时弹窗。
+
+---
+
+## UI 组件（新增/变更）
+
+### AlertDialog (`src/components/ui/alert-dialog.tsx`)
+自定义弹窗组件，替代原生 `Alert.alert`。`AlertDialogProvider` 已在 `_layout.tsx` 注册，通过 `useAlert()` hook 调用：
+```typescript
+alert.showAlert({ title, message, buttons: [{ text, style, onPress }] });
+```
+- 深色模式自动适配（`bg: #1E1E1E`），统一 `borderRadius: 16`，居中 + `paddingBottom: 56` 补偿导航栏
+- 导入选择器改为分页弹窗（每页 6 个通讯簿，含上一页/下一页/取消）
+
+### PhoneRow — 布局更新
+拨号/复制按钮移至号码右侧右对齐（`flexDirection: 'row', space-between`）。
+
+### 莫兰迪深色色板
+深色模式卡片使用独立挑选的同系低饱和色（`darkBg` #B0-#D8），保留粉彩柔和感。`ContactRow` 文字根据背景亮度自适应：亮卡片→暗文字。#
+### 导出 Excel
+设置页新增"导出 Excel 文件"，与导出 JSON 共用通讯簿选择向导，跳样式步骤直接导出。
 导入数据、删除通讯簿/目录后自动执行 `cleanupDuplicates()` + `cleanupOrphans()`，有结果时弹窗报告。
 
 ---

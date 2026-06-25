@@ -1,6 +1,6 @@
 # eAddressList 项目架构文档
 
-> 最后更新：2026-06-25
+> 最后更新：2026-07-01
 
 ## 技术栈
 
@@ -212,9 +212,7 @@ eAddressList/
 
 ### 颜色系统
 
-所有卡片/头像统一使用 Morris 10 色板，每个色点有 bg（背景）和 fg（前景字色）。
-
-**规则：`color_index ≥ 0` → 自定义色；`-1` → 回退默认算法。**
+所有卡片/头像统一使用 Morris 10 色板，浅色模式粉彩，深色模式独立挑选同系低饱和变体（`darkBg` #B0-#D8，`darkFg` #B0-#C8），柔和而不荧光。`ContactRow` 文字根据背景亮度自适应（亮底→暗字）。
 
 | 实体 | 存储列 | 自定义色 | 默认算法 |
 |---|---|---|---|
@@ -223,7 +221,10 @@ eAddressList/
 | 二级目录 | `directory_order.color_index` | `getMorrisColor(colorIndex)` | `getMorrisColor(hashIndex(name))` |
 | 联系人头像 | `contacts.color_index` | `getMorrisColor(colorIndex)` | `getNameColor(name)` |
 
-编辑对话框均提供 10 色 Morri 色板 + ↺ 恢复默认按钮。
+### 弹窗系统
+- 所有自定义弹窗统一 `borderRadius: 16`，居中 + `paddingBottom: 56` 补偿导航栏
+- `AlertDialogProvider` + `useAlert()` hook 替代原生 Alert，深色模式自动适配
+- 导入选择器使用分页弹窗（每页 6 个通讯簿）
 
 ### 搜索系统
 - 6 字段模糊匹配：姓名、职务、一级目录、二级目录、手机号、办公电话
