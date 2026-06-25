@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const [slots, setSlots] = useState<SaveSlotMeta[]>([]);
   const [slotMode, setSlotMode] = useState<'save' | 'load' | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportMode, setExportMode] = useState<'json' | 'excel'>('json');
   const [exportStep, setExportStep] = useState<'books' | 'style'>('books');
   const [selectedBookIds, setSelectedBookIds] = useState<Set<number>>(new Set());
   const [totalContacts, setTotalContacts] = useState(0);
@@ -248,7 +249,8 @@ export default function SettingsScreen() {
     setLoading(false);
   };
 
-  const openExportMenu = () => {
+  const openExportMenu = (mode: 'json' | 'excel') => {
+    setExportMode(mode);
     setSelectedBookIds(new Set(books.map((b) => b.id))); // 默认全选
     setExportStep('books');
     setShowExportMenu(true);
@@ -257,13 +259,16 @@ export default function SettingsScreen() {
   const toggleBookSelection = (id: number) => {
     const next = new Set(selectedBookIds);
     if (next.has(id)) next.delete(id); else next.add(id);
-    // 至少选一个
-    if (next.size === 0) return;
     setSelectedBookIds(next);
   };
 
   const selectAllBooks = () => {
-    setSelectedBookIds(new Set(books.map((b) => b.id)));
+    // Toggle: if all selected → deselect all; otherwise select all
+    if (selectedBookIds.size === books.length) {
+      setSelectedBookIds(new Set());
+    } else {
+      setSelectedBookIds(new Set(books.map((b) => b.id)));
+    }
   };
 
   // ── 清理 ──────────────────────────────────────────────
@@ -359,7 +364,7 @@ export default function SettingsScreen() {
         <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={openExportMenu}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => openExportMenu('json')}>
         <View style={styles.rowLeft}>
           <Icon name="file-upload" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
@@ -370,12 +375,12 @@ export default function SettingsScreen() {
         <Icon name="chevron-right" size={22} color={t.arrow} />
       </Pressable>
 
-      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => { setLoading(true); exportExcel().finally(() => setLoading(false)); }}>
+      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: t.rowBg, borderBottomColor: t.border }, pressed && { opacity: 0.6 }]} onPress={() => openExportMenu('excel')}>
         <View style={styles.rowLeft}>
           <Icon name="table-chart" size={28} style={{ marginRight: Spacing.three }} />
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: t.textPrimary }]}>导出 Excel 文件</Text>
-            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>按导入模板格式导出全部联系人为 Excel 文件</Text>
+            <Text style={[styles.rowDesc, { color: t.textSecondary }]}>选择通讯簿后导出为 Excel 文件</Text>
           </View>
         </View>
         <Icon name="chevron-right" size={22} color={t.arrow} />
@@ -522,8 +527,8 @@ export default function SettingsScreen() {
                 <Text style={[styles.dialogTitle, { color: t.textPrimary }]}>选择要导出的通讯簿</Text>
                 <Pressable style={({ pressed }) => [styles.selectAllBtn, pressed && { opacity: 0.6 }]} onPress={selectAllBooks}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Icon name={selectedBookIds.size === books.length ? 'check-box' : 'check-box-outline-blank'} size={18} color="#208AEF" />
-                    <Text style={styles.selectAllText}>{selectedBookIds.size === books.length ? ' 已全选' : ' 全选'}</Text>
+                    <Icon name={selectedBookIds.size === books.length ? 'check-box' : selectedBookIds.size > 0 ? 'indeterminate-check-box' : 'check-box-outline-blank'} size={18} color="#208AEF" />
+                    <Text style={styles.selectAllText}>{selectedBookIds.size === books.length ? ' 取消全选' : ' 全选'}</Text>
                   </View>
                 </Pressable>
                 <View style={styles.menuGroup}>
@@ -549,12 +554,37 @@ export default function SettingsScreen() {
                   >
                     <Text style={{ fontSize: 16, color: t.textSecondary }}>取消</Text>
                   </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [styles.dialogConfirm, pressed && { opacity: 0.8 }]}
-                    onPress={() => setExportStep('style')}
-                  >
-                    <Text style={styles.dialogConfirmText}>下一步</Text>
-                  </Pressable>
+                  {exportMode === 'excel' ? (
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.dialogConfirm,
+                        selectedBookIds.size === 0 && { backgroundColor: '#888' },
+                        pressed && selectedBookIds.size > 0 && { opacity: 0.8 },
+                      ]}
+                      onPress={() => {
+                        if (selectedBookIds.size === 0) return;
+                        setShowExportMenu(false);
+                        setLoading(true);
+                        exportExcel(Array.from(selectedBookIds)).finally(() => setLoading(false));
+                      }}
+                    >
+                      <Text style={styles.dialogConfirmText}>导出</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.dialogConfirm,
+                        selectedBookIds.size === 0 && { backgroundColor: '#888' },
+                        pressed && selectedBookIds.size > 0 && { opacity: 0.8 },
+                      ]}
+                      onPress={() => {
+                        if (selectedBookIds.size === 0) return;
+                        setExportStep('style');
+                      }}
+                    >
+                      <Text style={styles.dialogConfirmText}>下一步</Text>
+                    </Pressable>
+                  )}
                 </View>
               </>
             ) : (

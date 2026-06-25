@@ -514,17 +514,30 @@ export async function shareTemplate(): Promise<void> {
   }
 }
 
-/** 导出全部联系人为 Excel（与导入模板格式一致） */
-export async function exportExcel(): Promise<void> {
+/** 导出联系人为 Excel（与导入模板格式一致，可按通讯簿筛选） */
+export async function exportExcel(bookIds?: number[]): Promise<void> {
   try {
     const db = await getDatabase();
 
-    const contacts = await db.getAllAsync<any>(
-      `SELECT c.level1_dir, c.level2_dir, c.name, c.position, c.office_phone, c.mobile_phones
-       FROM contacts c
-       JOIN address_books ab ON c.address_book_id = ab.id
-       ORDER BY ab.sort_order, c.level1_dir, c.level2_dir, c.name`,
-    );
+    let contacts: any[];
+    if (bookIds && bookIds.length > 0) {
+      const ph = bookIds.map(() => '?').join(',');
+      contacts = await db.getAllAsync<any>(
+        `SELECT c.level1_dir, c.level2_dir, c.name, c.position, c.office_phone, c.mobile_phones
+         FROM contacts c
+         JOIN address_books ab ON c.address_book_id = ab.id
+         WHERE c.address_book_id IN (${ph})
+         ORDER BY ab.sort_order, c.level1_dir, c.level2_dir, c.name`,
+        bookIds,
+      );
+    } else {
+      contacts = await db.getAllAsync<any>(
+        `SELECT c.level1_dir, c.level2_dir, c.name, c.position, c.office_phone, c.mobile_phones
+         FROM contacts c
+         JOIN address_books ab ON c.address_book_id = ab.id
+         ORDER BY ab.sort_order, c.level1_dir, c.level2_dir, c.name`,
+      );
+    }
 
     if (contacts.length === 0) {
       Alert.alert('提示', '暂无联系人数据可导出');
