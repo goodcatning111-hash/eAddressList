@@ -15,7 +15,7 @@ import { Icon } from '@/components/icon';
 import { AccordionSection } from '@/components/ui/accordion-section';
 import { UnifiedSwipeableWrapper } from '@/components/ui/swipeable-row';
 import { ContactRow } from '@/components/contact-row';
-import { getMorrisColorForTheme, hashIndex, MorrisColors, lightenColor, getContactBg } from '@/constants/colors';
+import { getMorrisColor, getMorrisColorForTheme, hashIndex, MorrisColors, lightenColor, getContactBg } from '@/constants/colors';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
@@ -104,12 +104,18 @@ function ContactReorderView({ bookId, level1Dir, groups, onSaved, theme }: { boo
           // Contact item
           const c = item.contact!;
           const lastName = c.name.length > 0 ? c.name[c.name.length - 1] : '?';
-          const avatarColor = c.colorIndex >= 0 ? getMorrisColorForTheme(c.colorIndex, isDark) : getMorrisColorForTheme(hashIndex(c.name, MorrisColors.length), isDark);
+          // Avatar: use light-mode Morris colors (small accent, matches ContactRow)
+          const avatarColor = c.colorIndex >= 0 ? getMorrisColor(c.colorIndex) : getMorrisColor(hashIndex(c.name, MorrisColors.length));
           const primaryPhone = c.mobilePhones ? c.mobilePhones.split(',')[0].trim() : '';
+          // Brightness-aware text (matches ContactRow logic)
+          const bgHex = getContactBg(item.sectionBg!, isDark);
+          const isLightBg = (() => { const r=parseInt(bgHex.slice(1,3),16); const g=parseInt(bgHex.slice(3,5),16); const b=parseInt(bgHex.slice(5,7),16); return (r*299+g*587+b*114)/1000>145; })();
+          const reorderNameColor = (isDark && !isLightBg) ? '#E0E0E0' : '#111';
+          const reorderSecColor  = (isDark && !isLightBg) ? '#AAA' : '#606060';
           return (
             <Pressable
               style={[
-                { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.two, paddingHorizontal: Spacing.two, backgroundColor: getContactBg(item.sectionBg!, isDark), borderRadius: 8, marginBottom: Spacing.half },
+                { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.two, paddingHorizontal: Spacing.two, backgroundColor: bgHex, borderRadius: 8, marginBottom: Spacing.half },
                 isActive && { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8 }
               ]}
               onPress={() => router.push(`/book/${bookId}/contact/${c.id}`)}
@@ -120,10 +126,10 @@ function ContactReorderView({ bookId, level1Dir, groups, onSaved, theme }: { boo
                 <Text style={{ fontSize: 16, fontWeight: '700', color: avatarColor.fg }}>{lastName}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '500', color: isDark ? '#E0E0E0' : '#000' }}>{c.name}</Text>
-                {c.position ? <Text style={{ fontSize: 12, color: isDark ? '#AAA' : '#606060' }} numberOfLines={1}>{c.position}</Text> : null}
+                <Text style={{ fontSize: 15, fontWeight: '500', color: reorderNameColor }}>{c.name}</Text>
+                {c.position ? <Text style={{ fontSize: 12, color: reorderSecColor }} numberOfLines={1}>{c.position}</Text> : null}
               </View>
-              {primaryPhone ? <Text style={{ fontSize: 13, color: isDark ? '#AAA' : '#606060', marginRight: Spacing.one }}>{primaryPhone}</Text> : null}
+              {primaryPhone ? <Text style={{ fontSize: 13, color: reorderSecColor, marginRight: Spacing.one }}>{primaryPhone}</Text> : null}
             </Pressable>
           );
         }}

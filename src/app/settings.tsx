@@ -483,7 +483,7 @@ export default function SettingsScreen() {
       <Text style={[styles.sectionTitle, { color: t.textSecondary }]}>关于</Text>
       <View style={[styles.aboutRow, { backgroundColor: t.aboutBg, borderBottomColor: t.border }]}>
         <Text style={[styles.aboutText, { color: t.textSecondary }]}>版本 1.0.0</Text>
-        <Text style={[styles.aboutText, { color: t.textSecondary }]}>eAddressList 电子通讯录</Text>
+        <Text style={[styles.aboutText, { color: t.textSecondary }]}>e通讯</Text>
       </View>
 
       <View style={{ height: 60 }} />

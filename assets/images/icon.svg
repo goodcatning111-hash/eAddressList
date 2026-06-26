@@ -1,0 +1,20 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="100" height="100" rx="24" fill="#FFFFFF" />
+  <g transform="translate(24, 26) scale(0.67)">
+    <g transform="rotate(-6 48 48)" opacity="0.75">
+      <rect x="24" y="20" width="50" height="60" rx="8" fill="#8da1b5"></rect>
+      <line x1="32" y1="32" x2="48" y2="32" stroke="#fdfdfc" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="32" y1="42" x2="58" y2="42" stroke="#fdfdfc" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="32" y1="52" x2="62" y2="52" stroke="#fdfdfc" stroke-width="2" stroke-linecap="round"></line>
+    </g>
+    <g transform="translate(4, 2)">
+      <rect x="24" y="20" width="50" height="60" rx="8" fill="#c29f9a"></rect>
+      <rect x="24" y="20" width="50" height="60" rx="8" fill="none" stroke="#faf9f6" stroke-width="1"></rect>
+      <rect x="28" y="15" width="14" height="6" rx="2" fill="#c29f9a"></rect>
+      <circle cx="49" cy="38" r="6" fill="#faf9f6"></circle>
+      <path d="M 37,56 C 37,48 43,47 49,47 C 55,47 61,48 61,56 Z" fill="#faf9f6"></path>
+      <path d="M 38,66 L 60,66 C 60,64 58,62 49,62 C 40,62 38,64 38,66 Z" fill="#566270" opacity="0.6"></path>
+      <rect x="44" y="68" width="10" height="3" rx="1" fill="#566270" opacity="0.6"></rect>
+    </g>
+  </g>
+</svg>

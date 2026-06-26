@@ -204,20 +204,22 @@ export default function PortalScreen() {
 
       {/* 通讯簿列表 */}
       {books.length === 0 ? (
-        <ScrollView
-          style={styles.body}
-          contentContainerStyle={styles.emptyContainer}
-          bounces={true}
-          alwaysBounceVertical={true}
-        >
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.emptyContainer}
+            bounces={true}
+            alwaysBounceVertical={true}
+          >
           <View style={styles.emptyState}>
             <Icon name="menu-book" size={64} secondary />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>暂无通讯簿</Text>
             <Text style={[styles.emptyHint, { color: theme.textTertiary }]}>点击下方 + 按钮创建</Text>
           </View>
         </ScrollView>
+        
       ) : editMode ? (
-        <View style={styles.body}>
+        
+          <View style={styles.body}>
           <DraggableFlatList
             bounces={true}
             alwaysBounceVertical={true}
@@ -254,8 +256,10 @@ export default function PortalScreen() {
             }}
           />
         </View>
+        
       ) : (
-        <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
+        
+          <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
           {books.map((book) => (
             <View key={book.id} style={styles.cardWrapper}>
               <AddressBookCard
@@ -266,6 +270,7 @@ export default function PortalScreen() {
             </View>
           ))}
         </ScrollView>
+        
       )}
 
       {/* 重命名弹窗（含颜色选择器） */}
