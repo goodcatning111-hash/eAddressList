@@ -1,6 +1,6 @@
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="100" height="100" rx="24" fill="#FFFFFF" />
-  <g transform="translate(24, 26) scale(0.67)">
+  <g transform="translate(17, 16) scale(0.67)">
     <g transform="rotate(-6 48 48)" opacity="0.75">
       <rect x="24" y="20" width="50" height="60" rx="8" fill="#8da1b5"></rect>
       <line x1="32" y1="32" x2="48" y2="32" stroke="#fdfdfc" stroke-width="2" stroke-linecap="round"></line>
