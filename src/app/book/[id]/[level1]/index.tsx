@@ -15,7 +15,7 @@ import { Icon } from '@/components/icon';
 import { AccordionSection } from '@/components/ui/accordion-section';
 import { UnifiedSwipeableWrapper } from '@/components/ui/swipeable-row';
 import { ContactRow } from '@/components/contact-row';
-import { getMorrisColor, getMorrisColorForTheme, hashIndex, MorrisColors, lightenColor, getContactBg } from '@/constants/colors';
+import { getMorrisColor, getMorrisColorForTheme, getNameColor, hashIndex, MorrisColors, lightenColor, getContactBg } from '@/constants/colors';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme';
 import * as contactDao from '@/db/dao/contact-dao';
@@ -105,7 +105,7 @@ function ContactReorderView({ bookId, level1Dir, groups, onSaved, theme }: { boo
           const c = item.contact!;
           const lastName = c.name.length > 0 ? c.name[c.name.length - 1] : '?';
           // Avatar: use light-mode Morris colors (small accent, matches ContactRow)
-          const avatarColor = c.colorIndex >= 0 ? getMorrisColor(c.colorIndex) : getMorrisColor(hashIndex(c.name, MorrisColors.length));
+          const avatarColor = c.colorIndex >= 0 ? getMorrisColor(c.colorIndex) : getNameColor(c.name);
           const primaryPhone = c.mobilePhones ? c.mobilePhones.split(',')[0].trim() : '';
           // Brightness-aware text (matches ContactRow logic)
           const bgHex = getContactBg(item.sectionBg!, isDark);
@@ -221,23 +221,22 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
 
     setFloatingDir(prev => (prev !== best ? best : prev));
     setFloatingNearEnd(nearEnd);
-  }, [groups, expandedGroups]);
+  }, [groups, expandedGroups, FOOTER_H, HALF_R]);
 
   // ── on expand/collapse, re-measure then correct scroll position ────
   // Track which dirName was last toggled so we can scroll-stabilise
-  const lastToggled = useRef<string | null>(null);
+  const [lastToggled, setLastToggled] = useState<string | null>(null);
   const wrappedToggle = useCallback((dir: string) => {
-    lastToggled.current = dir;
+    setLastToggled(dir);
     onToggleExpand(dir);
   }, [onToggleExpand]);
 
-  const [, forceTick] = useState(0);
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       recomputeFloating(scrollY.current);
 
       // After collapse, scroll to keep the toggled header at its natural position
-      const dir = lastToggled.current;
+      const dir = lastToggled;
       if (dir && !expandedGroups.has(dir)) {
         // Section was just collapsed — scroll back to its header if needed
         const lo = layouts.current.get(dir);
@@ -246,10 +245,10 @@ function AccordionStickyView({ groups, bookId, level1Dir, expandedGroups, onTogg
           recomputeFloating(lo.headerTop);
         }
       }
-      lastToggled.current = null;
+      if (dir) setLastToggled(null);
     });
     return () => cancelAnimationFrame(id);
-  }, [flatItems]);
+  }, [expandedGroups, flatItems, lastToggled, recomputeFloating]);
 
   // ── header render helper (normal, non-floating headers only) ──────
   const renderHeader = (group: Level2Group) => {

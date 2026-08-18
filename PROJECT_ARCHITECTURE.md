@@ -238,8 +238,10 @@ eAddressList/
 |---|---|
 | 目录不建独立表 | 减少 schema 复杂度，通过 contacts 聚合查询 |
 | directory_order 独立表 | 目录排序需持久化，直接存 contacts 太重量 |
+| SQLite 显式启用外键 | 初始化连接执行 `PRAGMA foreign_keys = ON`，保证删除通讯簿时级联清理联系人和目录排序 |
 | 双层主题架构 | contexts/theme 管理用户偏好+AsyncStorage 持久化；hooks/use-theme 提供组件级取色；expo-router ThemeProvider 驱动导航栏 |
 | 导入用 fetch()+ArrayBuffer | 避免 expo-file-system base64 编码问题 |
+| 导入解析使用二维物理列 | 空单元格不会改变列索引；解析与 SQLite 写入解耦，便于回归测试 |
 | 颜色用名称哈希 | 目录拖拽后颜色跟随内容而非位置 |
 | 手势用 DraggableFlatList+Swipeable | 组合手势实现长按拖拽+右划操作 |
 | 右划参数调优 | friction=1 threshold=30 failOffsetY=[-20,20]：降低阻尼、放宽角度容差、缩短触发距离 |

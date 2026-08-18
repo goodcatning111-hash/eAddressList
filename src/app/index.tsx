@@ -207,7 +207,7 @@ export default function PortalScreen() {
           <ScrollView
             style={styles.body}
             contentContainerStyle={styles.emptyContainer}
-            bounces={true}
+            bounces={true} overScrollMode="always"
             alwaysBounceVertical={true}
           >
           <View style={styles.emptyState}>
@@ -221,7 +221,7 @@ export default function PortalScreen() {
         
           <View style={styles.body}>
           <DraggableFlatList
-            bounces={true}
+            bounces={true} overScrollMode="always"
             alwaysBounceVertical={true}
             data={books}
             keyExtractor={(item) => String(item.id)}
@@ -259,7 +259,7 @@ export default function PortalScreen() {
         
       ) : (
         
-          <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true}>
+          <ScrollView style={styles.body} bounces={true} alwaysBounceVertical={true} overScrollMode="always">
           {books.map((book) => (
             <View key={book.id} style={styles.cardWrapper}>
               <AddressBookCard

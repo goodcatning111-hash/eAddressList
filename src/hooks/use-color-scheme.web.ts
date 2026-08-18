@@ -8,7 +8,9 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
-    setHasHydrated(true);
+    // 延后到当前 effect 之后更新，避免同步级联渲染。
+    const timeout = setTimeout(() => setHasHydrated(true), 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   const colorScheme = useRNColorScheme();

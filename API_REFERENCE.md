@@ -209,9 +209,16 @@ const haptic = useHapticScale();
 - **支持格式**：xlsx, xls, et (WPS), csv, json
 - **读取方式**：`fetch()` + `ArrayBuffer`（xlsx）/ `text()`（csv/json）
 - **JSON**：自动识别并弹出恢复确认
-- **表头检测**：优先匹配中英文列名，无表头时按列位置推断（A→F）
+- **表头检测**：扫描前 30 个物理行，匹配常见中英文列名；支持标题行、重排列和附带注释的表头
+- **空字段安全**：以二维数组保留空单元格的物理列，不再根据第一条数据对象的键推断列
+- **合并目录**：展开 Excel 合并单元格，使区域内每位联系人都继承正确的一、二级目录
+- **无表头兼容**：仅在未识别到表头时固定按 A→F 解析，空列不会使后续字段前移
+- **写入路径**：解析成功后通过 `contact-dao.batchCreate()` 事务写入；自动建簿也在解析成功后执行
 - **姓名规范化**：导入时合并所有空白字符为单个半角空格
 - **返回值**：导入数量(>0成功)，-1(取消/JSON已处理)，-2(失败)
+
+### `parseContactRows(rows, merges)` (`src/utils/contact-import-parser.ts`)
+纯函数表格解析器，返回联系人表单数据、表头行号、列映射和跳过行数。可独立运行 `npm run test:import` 验证首行空职务、空一级目录、合并单元格、重排列及无表头等回归场景。
 
 ### `exportJSON(options?: ExportOptions): Promise<void>`
 1. 弹出两步向导：选择通讯簿（可多选/全选）→ 选择格式（含样式/纯数据）
@@ -436,4 +443,3 @@ GestureHandlerRootView          ← 手势系统根容器
 - `@react-native-async-storage/async-storage`（主题偏好持久化）
 - `react-native-worklets`（Worklet 线程调度）
 - `react-native-safe-area-context` / `react-native-screens`（原生导航）
-

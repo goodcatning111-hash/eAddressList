@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -48,33 +48,20 @@ export function ContactForm({
   onDelete,
 }: Props) {
   const { isDark } = useTheme();
-  const [name, setName] = useState('');
-  const [level1Dir, setLevel1Dir] = useState('');
-  const [level2Dir, setLevel2Dir] = useState('');
-  const [position, setPosition] = useState('');
-  const [officePhone, setOfficePhone] = useState('');
-  const [mobilePhones, setMobilePhones] = useState<string[]>(['']);
-  const [colorIndex, setColorIndex] = useState(-1);
-
-  // 编辑模式：预填数据
-  useEffect(() => {
-    if (contact) {
-      setName(contact.name);
-      setLevel1Dir(contact.level1Dir);
-      setLevel2Dir(contact.level2Dir);
-      setPosition(contact.position || '');
-      setOfficePhone(contact.officePhone || '');
-      const phones = contact.mobilePhones
-        ? contact.mobilePhones.split(',').map((p) => p.trim())
-        : [''];
-      setMobilePhones(phones.length > 0 ? phones : ['']);
-      setColorIndex(contact.colorIndex ?? -1);
-    } else if (initialLevel1 || initialLevel2) {
-      // 新建模式：预填目录
-      if (initialLevel1) setLevel1Dir(initialLevel1);
-      if (initialLevel2) setLevel2Dir(initialLevel2);
-    }
-  }, [contact, initialLevel1, initialLevel2]);
+  // 编辑页在联系人加载完成后才挂载表单；新建页的预填目录来自稳定路由参数。
+  // 直接用 props 初始化，避免挂载后再同步触发一轮级联渲染。
+  const [name, setName] = useState(contact?.name ?? '');
+  const [level1Dir, setLevel1Dir] = useState(contact?.level1Dir ?? initialLevel1 ?? '');
+  const [level2Dir, setLevel2Dir] = useState(contact?.level2Dir ?? initialLevel2 ?? '');
+  const [position, setPosition] = useState(contact?.position ?? '');
+  const [officePhone, setOfficePhone] = useState(contact?.officePhone ?? '');
+  const [mobilePhones, setMobilePhones] = useState<string[]>(() => {
+    const phones = contact?.mobilePhones
+      ? contact.mobilePhones.split(',').map((phone) => phone.trim()).filter(Boolean)
+      : [];
+    return phones.length > 0 ? phones : [''];
+  });
+  const [colorIndex, setColorIndex] = useState(contact?.colorIndex ?? -1);
 
   const addPhone = () => {
     setMobilePhones([...mobilePhones, '']);

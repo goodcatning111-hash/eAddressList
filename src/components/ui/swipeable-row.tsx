@@ -78,9 +78,10 @@ export function UnifiedSwipeableWrapper({
   style,
   borderRadius = 12,
 }: Props) {
+  const [cardHeight, setCardHeight] = useState(0);
+
   if (!enabled) return <>{children}</>;
 
-  const [cardHeight, setCardHeight] = useState(0);
   const radiusStyle = toRadiusStyle(borderRadius);
   const actionsWidth = ACTION_BTN_W * 2;
 

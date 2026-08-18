@@ -1,10 +1,13 @@
-/* eslint-disable @typescript-eslint/no-deprecated */
 import { Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
 import { getDatabase } from '@/db/database';
+import * as addressBookDao from '@/db/dao/address-book-dao';
+import * as contactDao from '@/db/dao/contact-dao';
+import { parseContactRows, type CellRange } from '@/utils/contact-import-parser';
+import type { ContactFormData } from '@/db/types';
 
 /** 从 URI 获取文件扩展名（小写） */
 function getExtension(uri: string): string {
@@ -48,38 +51,40 @@ export async function importFile(bookId?: number): Promise<number> {
       return -1; // 特殊标记
     }
 
-    // 3. xlsx/csv 导入：确保有 bookId
-    let targetBookId: number | undefined = bookId;
-    if (targetBookId == null) {
-      const id = await ensureBookId();
-      if (id == null) return -2;
-      targetBookId = id;
-    }
-
+    // 3. 先完整解析，再创建目标通讯簿。解析失败时不会留下空通讯簿。
+    let contacts: ContactFormData[];
     if (ext === 'csv') {
-      return await importCsvFromUri(file.uri, targetBookId);
-    }
-
-    if (ext === 'xlsx' || ext === 'xls' || ext === 'et') {
-      return await importXlsxFromUri(file.uri, targetBookId);
-    }
-
-    // 尝试自动检测
-    console.log('[Import] 未知扩展名，尝试自动检测...');
-    try {
-      return await importXlsxFromUri(file.uri, targetBookId);
-    } catch {
+      contacts = await parseCsvFromUri(file.uri);
+    } else if (ext === 'xlsx' || ext === 'xls' || ext === 'et') {
+      contacts = await parseXlsxFromUri(file.uri);
+    } else {
+      // 尝试自动检测
+      console.log('[Import] 未知扩展名，尝试自动检测...');
       try {
-        return await importCsvFromUri(file.uri, targetBookId);
-      } catch (err2) {
-        console.error('[Import] 无法识别文件格式:', err2);
-        Alert.alert(
-          '导入失败',
-          '无法识别文件格式。\n支持的文件类型：xlsx、csv、json',
-        );
-        return -2;
+        contacts = await parseXlsxFromUri(file.uri);
+      } catch {
+        try {
+          contacts = await parseCsvFromUri(file.uri);
+        } catch (err2) {
+          console.error('[Import] 无法识别文件格式:', err2);
+          Alert.alert(
+            '导入失败',
+            '无法识别文件格式。\n支持的文件类型：xlsx、csv、json',
+          );
+          return -2;
+        }
       }
     }
+
+    if (contacts.length === 0) {
+      Alert.alert('提示', '文件中没有可导入的联系人，请检查表头和姓名列');
+      return -2;
+    }
+
+    const targetBookId = bookId ?? await createDefaultBook();
+    await contactDao.batchCreate(targetBookId, contacts);
+    console.log(`[Import] 成功导入 ${contacts.length} 条联系人`);
+    return contacts.length;
   } catch (err) {
     console.error('[Import] 导入失败:', err);
     Alert.alert('导入失败', '无法解析该文件，请确认格式正确。\n\n支持：xlsx、csv、json');
@@ -87,31 +92,18 @@ export async function importFile(bookId?: number): Promise<number> {
   }
 }
 
-/** 确保有通讯簿可用：有则返回第一个 ID，无则创建默认通讯簿 */
-async function ensureBookId(): Promise<number | null> {
-  const db = await getDatabase();
-  const books = await db.getAllAsync<{ id: number }>(
-    'SELECT id FROM address_books ORDER BY id ASC LIMIT 1',
-  );
-  if (books.length > 0) return books[0].id;
-
-  // 创建默认通讯簿
-  const now = Date.now();
-  const result = await db.runAsync(
-    'INSERT INTO address_books (name, created_at, updated_at) VALUES (?, ?, ?)',
-    '默认通讯簿',
-    now,
-    now,
-  );
-  console.log('[Import] 自动创建"默认通讯簿"，ID:', result.lastInsertRowId);
-  return result.lastInsertRowId;
+/** 自动导入路径只负责创建新通讯簿，不再静默复用已有通讯簿。 */
+async function createDefaultBook(): Promise<number> {
+  const id = await addressBookDao.create('默认通讯簿');
+  console.log('[Import] 自动创建"默认通讯簿"，ID:', id);
+  return id;
 }
 
 /**
  * 从 URI 读取 xlsx 文件并导入到指定通讯簿。
  * 使用 fetch + ArrayBuffer 避免 base64 编码问题。
  */
-async function importXlsxFromUri(uri: string, bookId: number): Promise<number> {
+async function parseXlsxFromUri(uri: string) {
   // 读取文件为 ArrayBuffer
   const response = await fetch(uri);
   const arrayBuffer = await response.arrayBuffer();
@@ -119,138 +111,47 @@ async function importXlsxFromUri(uri: string, bookId: number): Promise<number> {
 
   // 用 XLSX 解析
   const workbook = XLSX.read(data, { type: 'array' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
-
-  if (rows.length === 0) {
-    Alert.alert('提示', '文件中没有数据');
-    return -2;
-  }
-
-  // 检查列名
-  const firstRow = rows[0];
-  console.log('[Import] xlsx 列名:', Object.keys(firstRow));
-  console.log('[Import] 共', rows.length, '行数据');
-
-  return await insertRows(bookId, rows);
+  return parseFirstWorksheet(workbook, 'xlsx');
 }
 
 /**
  * 从 URI 读取 csv 文件并导入到指定通讯簿。
  */
-async function importCsvFromUri(uri: string, bookId: number): Promise<number> {
+async function parseCsvFromUri(uri: string) {
   // 读取为纯文本
   const response = await fetch(uri);
   const text = await response.text();
 
   // 用 XLSX 解析 CSV
   const workbook = XLSX.read(text, { type: 'string' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
-
-  if (rows.length === 0) {
-    Alert.alert('提示', '文件中没有数据');
-    return -2;
-  }
-
-  console.log('[Import] csv 共', rows.length, '行数据');
-  return await insertRows(bookId, rows);
+  return parseFirstWorksheet(workbook, 'csv');
 }
 
 /**
- * 将解析后的行数据批量插入数据库。
- * 支持常见列名变体。
+ * 使用二维数组读取工作表，保留空单元格所在的物理列。
+ * 这避免首条记录的可选字段为空时，后续字段整体向前错位。
  */
-async function insertRows(
-  bookId: number,
-  rows: Record<string, unknown>[],
-): Promise<number> {
-  const db = await getDatabase();
-  const now = Date.now();
-  let imported = 0;
+function parseFirstWorksheet(workbook: XLSX.WorkBook, source: 'xlsx' | 'csv') {
+  const sheetName = workbook.SheetNames[0];
+  const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+  if (!sheet) throw new Error('文件中没有工作表');
 
-  // 自动检测列名（支持多种命名，无表头时按列位置推断）
-  const allKeys = Object.keys(rows[0]);
-
-  const findKey = (row: Record<string, unknown>, positionIndex: number, ...keys: string[]): string => {
-    // 先尝试通过列名匹配
-    for (const key of keys) {
-      if (key in row) return key;
-      for (const k of allKeys) {
-        const kl = k.toLowerCase().replace(/\s+/g, '');
-        if (kl.includes(key.toLowerCase())) return k;
-      }
-    }
-    // 无匹配：检查是否第一行看起来像数据（不是表头），按列位置 fallback
-    const firstVal = String(row[allKeys[positionIndex]] ?? '');
-    // 如果"应该是一级目录"的列的值看起来像目录名（中文），则可能无表头，直接使用位置
-    if (positionIndex < allKeys.length) return allKeys[positionIndex];
-    return keys[0]; // 最终 fallback
-  };
-
-  // 列索引 fallback：A=一级目录, B=二级目录, C=姓名, D=职务, E=办公电话, F=手机号
-  const keyLevel1 = findKey(rows[0], 0, '一级目录', 'level1', 'level1_dir', '部门', '组织');
-  const keyLevel2 = findKey(rows[0], 1, '二级目录', 'level2', 'level2_dir', '科室', '单位');
-  const keyName = findKey(rows[0], 2, '姓名', 'name', '名字', '人员');
-  const keyPosition = findKey(rows[0], 3, '职务', 'position', '职位', '岗位');
-  const keyOfficePhone = findKey(rows[0], 4, '办公电话', 'office_phone', '办公号码', '座机');
-  const keyMobile = findKey(rows[0], 5, '手机号', 'mobile', '电话', '手机', '号码');
-
-  console.log('[Import] 检测到的列映射:', {
-    level1: keyLevel1,
-    level2: keyLevel2,
-    name: keyName,
-    position: keyPosition,
-    office: keyOfficePhone,
-    mobile: keyMobile,
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: '',
+    raw: false,
+    // 保留空白物理行，使二维数组行号与 !merges 的行号一致。
+    blankrows: true,
   });
+  const parsed = parseContactRows(rows, (sheet['!merges'] ?? []) as CellRange[]);
 
-  const level1Unknown = '未分类';
+  console.log(`[Import] ${source} 工作表:`, sheetName);
+  console.log('[Import] 表头行:', parsed.headerRowIndex == null ? '未检测到，使用 A-F' : parsed.headerRowIndex + 1);
+  console.log('[Import] 列映射:', parsed.columnMap);
+  console.log('[Import] 可导入:', parsed.contacts.length, '跳过:', parsed.skippedRows);
 
-  await db.withTransactionAsync(async () => {
-    for (const row of rows) {
-      const mobileRaw = String(row[keyMobile] ?? '');
-      const mobilePhones = mobileRaw
-        .split(/[,，\s]+/)
-        .filter((s: string) => s.trim().length > 0)
-        .join(',');
-
-      const position = row[keyPosition]
-        ? String(row[keyPosition]).trim().replace(/\n/g, ' ')
-        : null;
-      const officePhone = row[keyOfficePhone]
-        ? String(row[keyOfficePhone]).trim()
-        : null;
-
-      let name = String(row[keyName] ?? '').trim();
-      if (!name) continue; // 跳过空行
-      // 规范化姓名：将所有空白字符（半角空格、全角空格、制表符）合并为一个半角空格
-      name = name.replace(/[\s　]+/g, ' ');
-      // 如果姓名只有两个字且中间有空格，保留空格（如"陈 凯"）
-      // 如果姓名三字以上且无空格，保持不变
-
-      await db.runAsync(
-        `INSERT INTO contacts
-           (address_book_id, level1_dir, level2_dir, name, position, office_phone, mobile_phones, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        bookId,
-        String(row[keyLevel1] ?? level1Unknown).trim(),
-        String(row[keyLevel2] ?? '').trim(),
-        name,
-        position,
-        officePhone,
-        mobilePhones,
-        now,
-        now,
-      );
-      imported++;
-    }
-  });
-
-  console.log(`[Import] 成功导入 ${imported} 条联系人`);
-  return imported;
+  if (parsed.contacts.length === 0) throw new Error('文件中没有可导入的联系人');
+  return parsed.contacts;
 }
 
 /**
